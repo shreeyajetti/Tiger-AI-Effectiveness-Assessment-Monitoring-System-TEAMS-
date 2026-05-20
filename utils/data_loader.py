@@ -99,73 +99,52 @@ def load_reserves():
 
 @st.cache_data(ttl=3600)
 def load_census():
-    """Load tiger census data from CSV (state level)."""
-    path = os.path.join(DATA_DIR, "census.csv")
+    """Load tiger census data from imputed master CSV (state level)."""
+    path = os.path.join(DATA_DIR, "tiger_census_imputed.csv")
     df = pd.read_csv(path)
-    if "year" in df.columns:
-        df["year"] = df["year"].astype(int)
-    if "population" in df.columns:
-        df["population"] = pd.to_numeric(df["population"], errors="coerce")
-    if "population_imputed" in df.columns:
-        df["population_imputed"] = pd.to_numeric(
-            df["population_imputed"], errors="coerce")
-    if "population_ci_lower" in df.columns:
-        df["population_ci_lower"] = pd.to_numeric(
-            df["population_ci_lower"], errors="coerce")
-    if "population_ci_upper" in df.columns:
-        df["population_ci_upper"] = pd.to_numeric(
-            df["population_ci_upper"], errors="coerce")
+    df["year"] = df["year"].astype(int)
+    df["population"] = pd.to_numeric(df["population"], errors="coerce")
+    df["population_imputed"] = pd.to_numeric(df["population_imputed"], errors="coerce")
+    df["population_ci_lower"] = pd.to_numeric(df["population_ci_lower"], errors="coerce")
+    df["population_ci_upper"] = pd.to_numeric(df["population_ci_upper"], errors="coerce")
     return df
 
 
 @st.cache_data(ttl=3600)
 def load_funds():
-    """Load conservation funding data from CSV (state level)."""
-    path = os.path.join(DATA_DIR, "reserves.csv")
+    """Load conservation funding data from imputed master CSV (state level)."""
+    path = os.path.join(DATA_DIR, "funds_imputed.csv")
     df = pd.read_csv(path)
-    if "year" in df.columns:
-        df["year"] = df["year"].astype(int)
+    df["year"] = df["year"].astype(int)
     for col in ["funds_central_share", "funds_release_amount",
                 "funds_state_allocation", "funds_total_including_tpf"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    # Best available funding figure: prefer total_including_tpf, fallback to central_share
+    df["funds_best"] = df["funds_total_including_tpf"].fillna(df["funds_central_share"])
     return df
 
 
 @st.cache_data(ttl=3600)
 def load_human_deaths():
-    """Load human death (conflict) data from CSV (state level)."""
-    path = os.path.join(DATA_DIR, "conflict.csv")
+    """Load human death (conflict) data from imputed master CSV (state level)."""
+    path = os.path.join(DATA_DIR, "humandeaths_imputed.csv")
     df = pd.read_csv(path)
-    if "year" in df.columns:
-        df["year"] = df["year"].astype(int)
-    if "deaths" in df.columns:
-        df["deaths"] = pd.to_numeric(df["deaths"], errors="coerce").fillna(0)
-    if "deaths_imputed" in df.columns:
-        df["deaths_imputed"] = pd.to_numeric(
-            df["deaths_imputed"], errors="coerce").fillna(0)
+    df["year"] = df["year"].astype(int)
+    df["deaths"] = pd.to_numeric(df["deaths"], errors="coerce").fillna(0)
+    df["deaths_imputed"] = pd.to_numeric(df["deaths_imputed"], errors="coerce").fillna(0)
     return df
 
 
 @st.cache_data(ttl=3600)
 def load_tiger_deaths():
-    """Load tiger mortality data from CSV (state level)."""
-    path = os.path.join(DATA_DIR, "poaching.csv")
+    """Load tiger mortality data from imputed master CSV (state level)."""
+    path = os.path.join(DATA_DIR, "tigerdeaths_imputed.csv")
     df = pd.read_csv(path)
-    if "year" in df.columns:
-        df["year"] = df["year"].astype(int)
-    if "total_deaths" in df.columns:
-        df["total_deaths"] = pd.to_numeric(
-            df["total_deaths"], errors="coerce").fillna(0)
-    if "deaths_poaching" in df.columns:
-        df["deaths_poaching"] = pd.to_numeric(
-            df["deaths_poaching"], errors="coerce").fillna(0)
-    if "deaths_natural_other" in df.columns:
-        df["deaths_natural_other"] = pd.to_numeric(
-            df["deaths_natural_other"], errors="coerce").fillna(0)
-    if "total_deaths_imputed" in df.columns:
-        df["total_deaths_imputed"] = pd.to_numeric(
-            df["total_deaths_imputed"], errors="coerce").fillna(0)
+    df["year"] = df["year"].astype(int)
+    df["total_deaths"] = pd.to_numeric(df["total_deaths"], errors="coerce").fillna(0)
+    df["deaths_poaching"] = pd.to_numeric(df["deaths_poaching"], errors="coerce").fillna(0)
+    df["deaths_natural_other"] = pd.to_numeric(df["deaths_natural_other"], errors="coerce").fillna(0)
+    df["total_deaths_imputed"] = pd.to_numeric(df["total_deaths_imputed"], errors="coerce").fillna(0)
     return df
 
 
