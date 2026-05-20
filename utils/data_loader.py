@@ -1,7 +1,6 @@
 """
 Data loading utilities for the TEAMS dashboard.
-All data is sourced from the real imputed master CSV files in:
-  c:\\UNI\\TEAMS\\data\\masters\\
+All data is sourced from CSV files in the data/ folder.
 Uses a 3-tier architecture: National → State → Landscape → Reserve
 """
 import pandas as pd
@@ -11,7 +10,7 @@ import os
 # Normalize __file__ robustly using abspath over the entire joined path.
 # This prevents issues where dirname() doesn't resolve `..` segments from st.navigation imports.
 _THIS_DIR = os.path.dirname(__file__)
-MASTERS_DIR = os.path.abspath(os.path.join(_THIS_DIR, "..", "..", "data", "masters"))
+DATA_DIR = os.path.abspath(os.path.join(_THIS_DIR, "..", "data"))
 
 
 # ── National tiger population historical data (1973-2022) ──
@@ -100,58 +99,80 @@ def load_reserves():
 
 @st.cache_data(ttl=3600)
 def load_census():
-    """Load tiger census data from imputed master CSV (state level)."""
-    path = os.path.join(MASTERS_DIR, "tiger_census_imputed.csv")
+    """Load tiger census data from CSV (state level)."""
+    path = os.path.join(DATA_DIR, "census.csv")
     df = pd.read_csv(path)
-    df["year"] = df["year"].astype(int)
-    df["population"] = pd.to_numeric(df["population"], errors="coerce")
-    df["population_imputed"] = pd.to_numeric(df["population_imputed"], errors="coerce")
-    df["population_ci_lower"] = pd.to_numeric(df["population_ci_lower"], errors="coerce")
-    df["population_ci_upper"] = pd.to_numeric(df["population_ci_upper"], errors="coerce")
+    if "year" in df.columns:
+        df["year"] = df["year"].astype(int)
+    if "population" in df.columns:
+        df["population"] = pd.to_numeric(df["population"], errors="coerce")
+    if "population_imputed" in df.columns:
+        df["population_imputed"] = pd.to_numeric(
+            df["population_imputed"], errors="coerce")
+    if "population_ci_lower" in df.columns:
+        df["population_ci_lower"] = pd.to_numeric(
+            df["population_ci_lower"], errors="coerce")
+    if "population_ci_upper" in df.columns:
+        df["population_ci_upper"] = pd.to_numeric(
+            df["population_ci_upper"], errors="coerce")
     return df
 
 
 @st.cache_data(ttl=3600)
 def load_funds():
-    """Load conservation funding data from imputed master CSV (state level)."""
-    path = os.path.join(MASTERS_DIR, "funds_imputed.csv")
+    """Load conservation funding data from CSV (state level)."""
+    path = os.path.join(DATA_DIR, "reserves.csv")
     df = pd.read_csv(path)
-    df["year"] = df["year"].astype(int)
+    if "year" in df.columns:
+        df["year"] = df["year"].astype(int)
     for col in ["funds_central_share", "funds_release_amount",
                 "funds_state_allocation", "funds_total_including_tpf"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-    # Best available funding figure: prefer total_including_tpf, fallback to central_share
-    df["funds_best"] = df["funds_total_including_tpf"].fillna(df["funds_central_share"])
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
 
 @st.cache_data(ttl=3600)
 def load_human_deaths():
-    """Load human death (conflict) data from imputed master CSV (state level)."""
-    path = os.path.join(MASTERS_DIR, "humandeaths_imputed.csv")
+    """Load human death (conflict) data from CSV (state level)."""
+    path = os.path.join(DATA_DIR, "conflict.csv")
     df = pd.read_csv(path)
-    df["year"] = df["year"].astype(int)
-    df["deaths"] = pd.to_numeric(df["deaths"], errors="coerce").fillna(0)
-    df["deaths_imputed"] = pd.to_numeric(df["deaths_imputed"], errors="coerce").fillna(0)
+    if "year" in df.columns:
+        df["year"] = df["year"].astype(int)
+    if "deaths" in df.columns:
+        df["deaths"] = pd.to_numeric(df["deaths"], errors="coerce").fillna(0)
+    if "deaths_imputed" in df.columns:
+        df["deaths_imputed"] = pd.to_numeric(
+            df["deaths_imputed"], errors="coerce").fillna(0)
     return df
 
 
 @st.cache_data(ttl=3600)
 def load_tiger_deaths():
-    """Load tiger mortality data from imputed master CSV (state level)."""
-    path = os.path.join(MASTERS_DIR, "tigerdeaths_imputed.csv")
+    """Load tiger mortality data from CSV (state level)."""
+    path = os.path.join(DATA_DIR, "poaching.csv")
     df = pd.read_csv(path)
-    df["year"] = df["year"].astype(int)
-    df["total_deaths"] = pd.to_numeric(df["total_deaths"], errors="coerce").fillna(0)
-    df["deaths_poaching"] = pd.to_numeric(df["deaths_poaching"], errors="coerce").fillna(0)
-    df["deaths_natural_other"] = pd.to_numeric(df["deaths_natural_other"], errors="coerce").fillna(0)
-    df["total_deaths_imputed"] = pd.to_numeric(df["total_deaths_imputed"], errors="coerce").fillna(0)
+    if "year" in df.columns:
+        df["year"] = df["year"].astype(int)
+    if "total_deaths" in df.columns:
+        df["total_deaths"] = pd.to_numeric(
+            df["total_deaths"], errors="coerce").fillna(0)
+    if "deaths_poaching" in df.columns:
+        df["deaths_poaching"] = pd.to_numeric(
+            df["deaths_poaching"], errors="coerce").fillna(0)
+    if "deaths_natural_other" in df.columns:
+        df["deaths_natural_other"] = pd.to_numeric(
+            df["deaths_natural_other"], errors="coerce").fillna(0)
+    if "total_deaths_imputed" in df.columns:
+        df["total_deaths_imputed"] = pd.to_numeric(
+            df["total_deaths_imputed"], errors="coerce").fillna(0)
     return df
 
 
 def get_national_trend_df():
     """Return the national tiger population trend (1973-2022) as a DataFrame."""
-    df = pd.DataFrame(list(NATIONAL_TREND.items()), columns=["year", "population"])
+    df = pd.DataFrame(list(NATIONAL_TREND.items()),
+                      columns=["year", "population"])
     return df.sort_values("year").reset_index(drop=True)
 
 
@@ -202,7 +223,8 @@ def get_imputation_explanation(method: str, ci_lower=None, ci_upper=None, ci_met
         "constant": ("Constant Value", "No variation was detected across available data; the value was held constant where observations were missing."),
     }
     key = (method or "none").strip().lower()
-    name, desc = methods.get(key, ("Unknown Method", "The estimation method is not documented for this entry."))
+    name, desc = methods.get(
+        key, ("Unknown Method", "The estimation method is not documented for this entry."))
 
     ci_text = ""
     if ci_lower is not None and ci_upper is not None and str(ci_lower) not in ("nan", ""):
