@@ -104,9 +104,12 @@ def load_census():
     df = pd.read_csv(path)
     df["year"] = df["year"].astype(int)
     df["population"] = pd.to_numeric(df["population"], errors="coerce")
-    df["population_imputed"] = pd.to_numeric(df["population_imputed"], errors="coerce")
-    df["population_ci_lower"] = pd.to_numeric(df["population_ci_lower"], errors="coerce")
-    df["population_ci_upper"] = pd.to_numeric(df["population_ci_upper"], errors="coerce")
+    df["population_imputed"] = pd.to_numeric(
+        df["population_imputed"], errors="coerce")
+    df["population_ci_lower"] = pd.to_numeric(
+        df["population_ci_lower"], errors="coerce")
+    df["population_ci_upper"] = pd.to_numeric(
+        df["population_ci_upper"], errors="coerce")
     return df
 
 
@@ -120,7 +123,8 @@ def load_funds():
                 "funds_state_allocation", "funds_total_including_tpf"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     # Best available funding figure: prefer total_including_tpf, fallback to central_share
-    df["funds_best"] = df["funds_total_including_tpf"].fillna(df["funds_central_share"])
+    df["funds_best"] = df["funds_total_including_tpf"].fillna(
+        df["funds_central_share"])
     return df
 
 
@@ -131,7 +135,8 @@ def load_human_deaths():
     df = pd.read_csv(path)
     df["year"] = df["year"].astype(int)
     df["deaths"] = pd.to_numeric(df["deaths"], errors="coerce").fillna(0)
-    df["deaths_imputed"] = pd.to_numeric(df["deaths_imputed"], errors="coerce").fillna(0)
+    df["deaths_imputed"] = pd.to_numeric(
+        df["deaths_imputed"], errors="coerce").fillna(0)
     return df
 
 
@@ -141,10 +146,14 @@ def load_tiger_deaths():
     path = os.path.join(DATA_DIR, "tigerdeaths_imputed.csv")
     df = pd.read_csv(path)
     df["year"] = df["year"].astype(int)
-    df["total_deaths"] = pd.to_numeric(df["total_deaths"], errors="coerce").fillna(0)
-    df["deaths_poaching"] = pd.to_numeric(df["deaths_poaching"], errors="coerce").fillna(0)
-    df["deaths_natural_other"] = pd.to_numeric(df["deaths_natural_other"], errors="coerce").fillna(0)
-    df["total_deaths_imputed"] = pd.to_numeric(df["total_deaths_imputed"], errors="coerce").fillna(0)
+    df["total_deaths"] = pd.to_numeric(
+        df["total_deaths"], errors="coerce").fillna(0)
+    df["deaths_poaching"] = pd.to_numeric(
+        df["deaths_poaching"], errors="coerce").fillna(0)
+    df["deaths_natural_other"] = pd.to_numeric(
+        df["deaths_natural_other"], errors="coerce").fillna(0)
+    df["total_deaths_imputed"] = pd.to_numeric(
+        df["total_deaths_imputed"], errors="coerce").fillna(0)
     return df
 
 
