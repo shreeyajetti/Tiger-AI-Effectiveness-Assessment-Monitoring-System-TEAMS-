@@ -59,6 +59,8 @@ def apply_dark_layout(fig, **kwargs):
         title_font=dict(size=12, color=MUTED_TEXT),
         tickfont=dict(size=11, color=MUTED_TEXT),
     )
+    # Ensure title text is always defined (avoid Plotly showing 'undefined' when title font exists)
+    fig.update_layout(title_text="")
     return fig
 
 

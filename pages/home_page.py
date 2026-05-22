@@ -131,7 +131,7 @@ fig = go.Figure()
 fig.add_trace(go.Scatter(
     x=national["year"], y=national["population"],
     mode="none", fill="tozeroy",
-    fillcolor="rgba(245,158,11,0.07)", showlegend=False
+    fillcolor="rgba(245,158,11,0.07)", name="", showlegend=False
 ))
 fig.add_trace(go.Scatter(
     x=national["year"], y=national["population"],
@@ -172,6 +172,7 @@ with left:
             colorscale=[[0, PRIMARY_LIGHT], [0.5, ACCENT], [1.0, ACCENT_LIGHT]],
             line=dict(color="rgba(0,0,0,0)", width=0),
         ),
+        name="",
         text=[f"{int(v):,}" for v in top10["pop_2022"]],
         textposition="outside",
         textfont=dict(color=MUTED_TEXT, size=11),
@@ -187,6 +188,8 @@ with right:
         "Total Conservation Funds (₹ Lakh) vs. Population by State"), unsafe_allow_html=True)
 
     scatter_df = summary[(summary["pop_2022"] > 0) & (summary["total_funds_lakh"] > 0)].copy()
+    # Ensure label column is safe for Plotly text/hover (avoid undefined)
+    scatter_df["state"] = scatter_df["state"].fillna("").astype(str)
     fig3 = go.Figure()
     fig3.add_trace(go.Scatter(
         x=scatter_df["total_funds_lakh"],
@@ -233,6 +236,7 @@ with hcol:
         y=hd_matrix.index.tolist(),
         colorscale=[[0, PRIMARY_DARK], [0.3, PRIMARY], [0.7, ACCENT], [1, ALERT]],
         hovertemplate="<b>%{y}</b> · %{x}<br>Deaths: <b>%{z:.0f}</b><extra></extra>",
+        name="",
         showscale=True,
         colorbar=dict(thickness=12, len=0.8, tickfont=dict(size=9)),
     ))
@@ -252,6 +256,7 @@ with tcol:
         y=td_matrix.index.tolist(),
         colorscale=[[0, PRIMARY_DARK], [0.3, PRIMARY], [0.7, "#F97316"], [1, ALERT]],
         hovertemplate="<b>%{y}</b> · %{x}<br>Deaths: <b>%{z:.0f}</b><extra></extra>",
+        name="",
         showscale=True,
         colorbar=dict(thickness=12, len=0.8, tickfont=dict(size=9)),
     ))

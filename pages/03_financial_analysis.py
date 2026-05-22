@@ -115,6 +115,8 @@ with tab_overview:
                       total=("funds_best", "sum")))
 
     _bubble_df = state_agg.dropna(subset=["avg_annual"]).copy()
+    # Ensure state label is present for Plotly `text` and hover
+    _bubble_df["state"] = _bubble_df["state"].fillna("").astype(str)
     fig_b = px.scatter(
         _bubble_df,
         x="total", y="avg_annual",
@@ -252,6 +254,7 @@ with tab_trend:
         x=annual_yoy["year"],
         y=annual_yoy["yoy_change"],
         marker_color=[SUCCESS if v >= 0 else ALERT for v in annual_yoy["yoy_change"]],
+        name="",
         hovertemplate="<b>%{x}</b><br>Change: ₹%{y:+,.0f} L<extra></extra>",
         text=[f"₹{int(v):+,}" for v in annual_yoy["yoy_change"]],
         textposition="outside",

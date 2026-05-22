@@ -226,7 +226,7 @@ with tab_trend:
     fig_trend.add_trace(go.Scatter(
         x=national_trend["year"], y=national_trend["population"],
         mode="none", fill="tozeroy", fillcolor="rgba(245,158,11,0.06)",
-        showlegend=False
+        name="", showlegend=False
     ))
     fig_trend.add_trace(go.Scatter(
         x=national_trend["year"], y=national_trend["population"],

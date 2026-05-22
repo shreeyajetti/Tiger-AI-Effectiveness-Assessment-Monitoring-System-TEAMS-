@@ -140,6 +140,7 @@ with tab_tiger:
         y=pivot.index.tolist(),
         colorscale=[[0, PRIMARY_DARK], [0.2, PRIMARY], [0.6, "#F97316"], [1, ALERT]],
         hovertemplate="<b>%{y}</b> · %{x}<br>Deaths: <b>%{z:.0f}</b><extra></extra>",
+        name="",
         showscale=True,
         colorbar=dict(title=dict(text="Deaths", font=dict(size=10)),
                       thickness=14, len=0.8, tickfont=dict(size=9))
@@ -155,9 +156,11 @@ with tab_tiger:
             "Number of Wildlife Seizure Operations Reported Nationally"), unsafe_allow_html=True)
         seiz_annual = (seizure_states.groupby("year")["national_seizures"]
                        .first().reset_index())
+        seiz_annual["national_seizures"] = seiz_annual["national_seizures"].fillna(0)
         fig_seiz = go.Figure(go.Bar(
             x=seiz_annual["year"], y=seiz_annual["national_seizures"],
             marker_color=ACCENT,
+            name="",
             text=[f"{int(v):,}" for v in seiz_annual["national_seizures"]],
             textposition="outside", textfont=dict(size=10, color=MUTED_TEXT),
             hovertemplate="<b>%{x}</b><br>Seizures: %{y:.0f}<extra></extra>"
@@ -190,7 +193,7 @@ with tab_human:
     fig_hd_nat.add_trace(go.Scatter(
         x=hd_annual["year"], y=hd_annual["total"],
         mode="none", fill="tozeroy", fillcolor="rgba(239,68,68,0.07)",
-        showlegend=False
+        name="", showlegend=False
     ))
     fig_hd_nat.add_trace(go.Scatter(
         x=hd_annual["year"], y=hd_annual["total"],
@@ -211,6 +214,7 @@ with tab_human:
 
     state_hd = (hd_f.groupby("state", as_index=False)["deaths_imputed"].sum()
                 .sort_values("deaths_imputed", ascending=False).head(12))
+    state_hd["deaths_imputed"] = state_hd["deaths_imputed"].fillna(0)
     fig_sbar = go.Figure(go.Bar(
         x=state_hd["state"], y=state_hd["deaths_imputed"],
         marker=dict(
@@ -218,6 +222,7 @@ with tab_human:
             colorscale=[[0, PRIMARY], [0.4, ACCENT], [0.7, "#F97316"], [1, ALERT]],
             showscale=False, line=dict(color=PRIMARY_DARK, width=0.5)
         ),
+        name="",
         text=[f"{int(v):,}" for v in state_hd["deaths_imputed"]],
         textposition="outside", textfont=dict(size=10, color=MUTED_TEXT),
         hovertemplate="<b>%{x}</b><br>Deaths: %{y:.0f}<extra></extra>"
@@ -240,6 +245,7 @@ with tab_human:
         y=hd_pivot.index.tolist(),
         colorscale=[[0, PRIMARY_DARK], [0.3, PRIMARY], [0.7, ACCENT], [1, ALERT]],
         hovertemplate="<b>%{y}</b> · %{x}<br>Deaths: <b>%{z:.0f}</b><extra></extra>",
+        name="",
         showscale=True,
         colorbar=dict(thickness=14, len=0.8, tickfont=dict(size=9))
     ))
@@ -293,6 +299,8 @@ with tab_compare:
     hd_st = hdeaths.groupby("state")["deaths_imputed"].sum().reset_index()
     corr_df = td_st.merge(hd_st, on="state", how="inner")
     corr_df.columns = ["state", "tiger_deaths", "human_deaths"]
+    # Ensure state labels are strings to avoid Plotly showing 'undefined'
+    corr_df["state"] = corr_df["state"].fillna("").astype(str)
 
     fig_cor = px.scatter(
         corr_df, x="tiger_deaths", y="human_deaths", text="state",
