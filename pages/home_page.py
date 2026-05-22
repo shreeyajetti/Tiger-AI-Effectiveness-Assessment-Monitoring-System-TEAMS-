@@ -226,6 +226,11 @@ st.markdown(section_header("Human Conflict & Tiger Mortality Overview",
 
 hcol, tcol = st.columns(2)
 with hcol:
+    st.markdown(
+        '<div style="font-size:0.96rem;font-weight:700;color:' + TEXT_COLOR + ';'
+        'margin-bottom:10px;letter-spacing:0.4px;">Human deaths</div>',
+        unsafe_allow_html=True,
+    )
     hd_pivot = (hdeaths.groupby(["year", "state"])["deaths_imputed"].sum().reset_index())
     top_conflict = (hd_pivot.groupby("state")["deaths_imputed"].sum().nlargest(10).index.tolist())
     hd_top = hd_pivot[hd_pivot["state"].isin(top_conflict)]
@@ -246,6 +251,11 @@ with hcol:
     st.plotly_chart(fig4, use_container_width=True)
 
 with tcol:
+    st.markdown(
+        '<div style="font-size:0.96rem;font-weight:700;color:' + TEXT_COLOR + ';'
+        'margin-bottom:10px;letter-spacing:0.4px;">Tiger deaths</div>',
+        unsafe_allow_html=True,
+    )
     td_pivot = (tdeaths.groupby(["year", "state"])["total_deaths_imputed"].sum().reset_index())
     top_td = (td_pivot.groupby("state")["total_deaths_imputed"].sum().nlargest(10).index.tolist())
     td_top = td_pivot[td_pivot["state"].isin(top_td)]
