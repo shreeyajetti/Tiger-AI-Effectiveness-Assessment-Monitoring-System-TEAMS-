@@ -6,6 +6,9 @@ markdown parser treating 4-space-indented lines as code blocks.
 """
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
+from pathlib import Path
+import re
 
 # ── Color palette ──
 PRIMARY = "#1B4332"
@@ -174,6 +177,40 @@ def divider():
     )
 
 
+def popout_link(fig, key, label="Full screen chart"):
+    """Write the figure to a standalone static page and link to it in the same browser tab."""
+    safe_key = re.sub(r"[^a-zA-Z0-9_-]+", "_", key).strip("_")
+    repo_root = Path(__file__).resolve().parent.parent
+    chart_dir = repo_root / "static" / "charts"
+    chart_dir.mkdir(parents=True, exist_ok=True)
+    chart_path = chart_dir / f"{safe_key}.html"
+    chart_html = fig.to_html(
+        full_html=False,
+        include_plotlyjs="cdn",
+        default_width="100%",
+        default_height="100vh",
+        config={"responsive": True, "displayModeBar": True, "displaylogo": False},
+    )
+    chart_path.write_text(
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+        "<title>TEAMS Chart</title>"
+        "<style>html,body{margin:0;width:100%;height:100%;background:#0E1117;overflow:hidden;}"
+        ".plotly-graph-div{width:100vw!important;height:100vh!important;}</style>"
+        "</head><body>"
+        f"{chart_html}"
+        "</body></html>",
+        encoding="utf-8",
+    )
+    chart_url = f"http://localhost:8501/app/static/charts/{safe_key}.html"
+    st.markdown(
+        f'<a class="teams-popout-link" href="{chart_url}" target="_top" '
+        f'onclick="window.top.location.href=\'{chart_url}\'; return false;">'
+        f'⛶ {label}</a>',
+        unsafe_allow_html=True,
+    )
+
+
 # ── Global CSS injection ──
 GLOBAL_CSS = """
 <style>
@@ -305,6 +342,21 @@ GLOBAL_CSS = """
     }
 
     /* ── Hide Streamlit branding ── */
+    .teams-popout-link {
+        display: inline-flex;
+        align-items: center;
+        margin: -8px 0 8px 0;
+        color: #F59E0B !important;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-decoration: none !important;
+        letter-spacing: 0.2px;
+    }
+    .teams-popout-link:hover {
+        color: #FBBF24 !important;
+        text-decoration: underline !important;
+    }
+
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     header[data-testid="stHeader"] {

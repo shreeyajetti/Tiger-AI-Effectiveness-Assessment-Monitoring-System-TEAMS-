@@ -15,7 +15,7 @@ from utils.map_utils import (GLOBAL_CSS, stat_card, stat_card_mini, section_head
                               page_header, apply_dark_layout, divider,
                               ACCENT, ACCENT_LIGHT, ALERT, PRIMARY, PRIMARY_LIGHT,
                               PRIMARY_DARK, TEXT_COLOR, MUTED_TEXT, BORDER_SUBTLE,
-                              SUCCESS, INFO)
+                              SUCCESS, INFO, popout_link)
 
 st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
@@ -74,7 +74,7 @@ tab_tiger, tab_human, tab_compare, tab_methods = st.tabs([
 # TAB 1: Tiger Mortality
 # ══════════════════════════════════════════
 with tab_tiger:
-    st.markdown(section_header("Tiger Deaths by State & Year",
+    st.markdown(section_header("Tiger deaths per year",
         "Stacked by Cause: Poaching, Natural, Unnatural (Non-Poaching), Seizures, Under Scrutiny"),
         unsafe_allow_html=True)
 
@@ -123,6 +123,7 @@ with tab_tiger:
     apply_dark_layout(fig_td_nat, height=420, barmode="stack",
                       xaxis_title="Year", yaxis_title="Tiger Deaths")
     fig_td_nat.update_xaxes(type="category")
+    popout_link(fig_td_nat, "mortality_tiger_yearly_popout", "Pop out chart")
     st.plotly_chart(fig_td_nat, use_container_width=True)
 
     st.markdown(section_header("Tiger Deaths by State",
@@ -147,6 +148,7 @@ with tab_tiger:
     ))
     apply_dark_layout(fig_hm, height=480, showlegend=False)
     fig_hm.update_xaxes(tickangle=-45, tickfont=dict(size=9))
+    popout_link(fig_hm, "mortality_tiger_heatmap_popout", "Pop out chart")
     st.plotly_chart(fig_hm, use_container_width=True)
 
     # National seizures overlay
@@ -168,6 +170,7 @@ with tab_tiger:
         apply_dark_layout(fig_seiz, height=280, showlegend=False,
                           xaxis_title="Year", yaxis_title="Seizure Count")
         fig_seiz.update_xaxes(type="category")
+        popout_link(fig_seiz, "mortality_seizure_popout", "Pop out chart")
         st.plotly_chart(fig_seiz, use_container_width=True)
 
 # ══════════════════════════════════════════
@@ -206,6 +209,7 @@ with tab_human:
     apply_dark_layout(fig_hd_nat, height=350,
                       xaxis_title="Year", yaxis_title="Human Deaths")
     fig_hd_nat.update_xaxes(type="category")
+    popout_link(fig_hd_nat, "mortality_human_trend_popout", "Pop out chart")
     st.plotly_chart(fig_hd_nat, use_container_width=True)
 
     # State-level stacked bar
@@ -230,6 +234,7 @@ with tab_human:
     apply_dark_layout(fig_sbar, height=380, showlegend=False,
                       xaxis_title="State", yaxis_title="Human Deaths")
     fig_sbar.update_xaxes(tickangle=-35)
+    popout_link(fig_sbar, "mortality_state_bar_popout", "Pop out chart")
     st.plotly_chart(fig_sbar, use_container_width=True)
 
     # Conflict heatmap
@@ -251,6 +256,7 @@ with tab_human:
     ))
     apply_dark_layout(fig_hm2, height=420, showlegend=False)
     fig_hm2.update_xaxes(tickangle=-45, tickfont=dict(size=9))
+    popout_link(fig_hm2, "mortality_conflict_heatmap_popout", "Pop out chart")
     st.plotly_chart(fig_hm2, use_container_width=True)
 
 # ══════════════════════════════════════════
@@ -289,6 +295,7 @@ with tab_compare:
         )
     )
     fig_dual.update_xaxes(type="category")
+    popout_link(fig_dual, "mortality_dual_popout", "Pop out chart")
     st.plotly_chart(fig_dual, use_container_width=True)
 
     # Correlation by state
@@ -322,6 +329,7 @@ with tab_compare:
             trace.hovertemplate = "OLS Trend<extra></extra>"
     apply_dark_layout(fig_cor, height=400,
                       xaxis_title="Tiger Deaths (Total)", yaxis_title="Human Deaths (Total)")
+    popout_link(fig_cor, "mortality_correlation_popout", "Pop out chart")
     st.plotly_chart(fig_cor, use_container_width=True)
 
 # ══════════════════════════════════════════

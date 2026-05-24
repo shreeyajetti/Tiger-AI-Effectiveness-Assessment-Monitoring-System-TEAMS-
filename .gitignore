@@ -10,8 +10,8 @@ venv/
 env/
 ENV/
 
-# Streamlit local config
-.streamlit/
+# Streamlit static chart exports
+static/charts/*.html
 
 # OS files
 .DS_Store

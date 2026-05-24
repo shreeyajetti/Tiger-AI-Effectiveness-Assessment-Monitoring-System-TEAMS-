@@ -16,7 +16,7 @@ from utils.map_utils import (GLOBAL_CSS, stat_card, stat_card_mini, section_head
                               page_header, apply_dark_layout, divider,
                               ACCENT, ACCENT_LIGHT, ALERT, PRIMARY, PRIMARY_LIGHT,
                               PRIMARY_DARK, TEXT_COLOR, MUTED_TEXT, BORDER_SUBTLE,
-                              BORDER_ACCENT, SUCCESS, INFO)
+                              BORDER_ACCENT, SUCCESS, INFO, popout_link)
 
 st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
@@ -30,13 +30,14 @@ with st.spinner("Loading data..."):
     states  = get_states()
 
 # ── Sidebar state selector ──
+st.markdown(
+    f'<p style="color:{ACCENT};font-size:0.7rem;font-weight:700;'
+    f'letter-spacing:2px;margin:0 0 8px 0;">Select State</p>',
+    unsafe_allow_html=True
+)
+selected_state = st.selectbox("State", states, key="state_sel")
+
 with st.sidebar:
-    st.markdown(
-        f'<p style="color:{ACCENT};font-size:0.7rem;font-weight:700;'
-        f'letter-spacing:2px;margin:16px 0 8px 0;">Select State</p>',
-        unsafe_allow_html=True
-    )
-    selected_state = st.selectbox("State", states, label_visibility="collapsed", key="state_sel")
     st.markdown(
         f'<div style="height:1px;margin:12px 0;'
         f'background:linear-gradient(90deg,transparent,{BORDER_ACCENT},transparent);"></div>',
@@ -160,6 +161,7 @@ with tab_pop:
         apply_dark_layout(fig, height=400,
                           xaxis_title="Census Year", yaxis_title="Tiger Population")
         fig.update_xaxes(type="category")
+        popout_link(fig, "state_pop_trend_popout", "Pop out chart")
         st.plotly_chart(fig, use_container_width=True)
 
         # Data table
@@ -204,6 +206,7 @@ with tab_funds:
         apply_dark_layout(fig_f, height=400, barmode="group",
                           xaxis_title="Year", yaxis_title="Amount (₹ Lakh)")
         fig_f.update_xaxes(type="category")
+        popout_link(fig_f, "state_funding_popout", "Pop out chart")
         st.plotly_chart(fig_f, use_container_width=True)
 
         # CI for funds
@@ -253,6 +256,7 @@ with tab_mort:
             apply_dark_layout(fig_td, height=380, barmode="stack",
                               xaxis_title="Year", yaxis_title="Deaths")
             fig_td.update_xaxes(type="category")
+            popout_link(fig_td, "state_tiger_mortality_popout", "Pop out chart")
             st.plotly_chart(fig_td, use_container_width=True)
 
     with m_right:
@@ -279,6 +283,7 @@ with tab_mort:
             apply_dark_layout(fig_hd, height=380, barmode="stack",
                               xaxis_title="Year", yaxis_title="Human Deaths")
             fig_hd.update_xaxes(type="category")
+            popout_link(fig_hd, "state_human_deaths_popout", "Pop out chart")
             st.plotly_chart(fig_hd, use_container_width=True)
 
     # Conflict flag

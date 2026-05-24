@@ -14,7 +14,7 @@ from utils.map_utils import (GLOBAL_CSS, stat_card, stat_card_mini, section_head
                               page_header, apply_dark_layout, divider,
                               ACCENT, ACCENT_LIGHT, ALERT, PRIMARY, PRIMARY_LIGHT,
                               PRIMARY_DARK, TEXT_COLOR, MUTED_TEXT, BORDER_SUBTLE,
-                              SUCCESS, INFO)
+                              SUCCESS, INFO, popout_link)
 
 st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
@@ -103,6 +103,7 @@ with tab_overview:
 
     apply_dark_layout(fig1, height=520, barmode="overlay",
                       xaxis_title="Amount (₹ Lakh)", yaxis_title="")
+    popout_link(fig1, "finance_all_state_popout", "Pop out chart")
     st.plotly_chart(fig1, use_container_width=True)
 
     # Bubble chart: funding vs tiger count proxy
@@ -140,6 +141,7 @@ with tab_overview:
     apply_dark_layout(fig_b, height=420, showlegend=False,
                       xaxis_title="Total Funds (₹ Lakh)", yaxis_title="Avg Annual (₹ Lakh)")
     fig_b.update_coloraxes(showscale=False)
+    popout_link(fig_b, "finance_bubble_popout", "Pop out chart")
     st.plotly_chart(fig_b, use_container_width=True)
 
 # ══════════════════════════════════════════
@@ -204,6 +206,7 @@ with tab_state:
         apply_dark_layout(fig_s, height=420, barmode="group",
                           xaxis_title="Year", yaxis_title="Amount (₹ Lakh)")
         fig_s.update_xaxes(type="category")
+        popout_link(fig_s, "finance_state_detail_popout", "Pop out chart")
         st.plotly_chart(fig_s, use_container_width=True)
 
 # ══════════════════════════════════════════
@@ -242,6 +245,7 @@ with tab_trend:
     apply_dark_layout(fig_t, height=420,
                       xaxis_title="Year", yaxis_title="Amount (₹ Lakh)")
     fig_t.update_xaxes(type="category")
+    popout_link(fig_t, "finance_national_trend_popout", "Pop out chart")
     st.plotly_chart(fig_t, use_container_width=True)
 
     # Year-on-year change
@@ -264,6 +268,7 @@ with tab_trend:
                       xaxis_title="Year", yaxis_title="ΔFunds (₹ Lakh)")
     fig_yoy.update_xaxes(type="category")
     fig_yoy.add_hline(y=0, line_color="rgba(255,255,255,0.15)", line_width=1)
+    popout_link(fig_yoy, "finance_yoy_popout", "Pop out chart")
     st.plotly_chart(fig_yoy, use_container_width=True)
 
 # ══════════════════════════════════════════
