@@ -8,6 +8,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 from pathlib import Path
+from plotly.offline.offline import get_plotlyjs
 import re
 
 # ── Color palette ──
@@ -183,26 +184,30 @@ def popout_link(fig, key, label="Full screen chart"):
     repo_root = Path(__file__).resolve().parent.parent
     chart_dir = repo_root / "static" / "charts"
     chart_dir.mkdir(parents=True, exist_ok=True)
+    plotly_bundle_path = chart_dir / "plotly.min.js"
+    if not plotly_bundle_path.exists():
+        plotly_bundle_path.write_text(get_plotlyjs(), encoding="utf-8")
     chart_path = chart_dir / f"{safe_key}.html"
     chart_html = fig.to_html(
         full_html=False,
-        # Bundle plotly.js so the popout works even if CDN/network is unavailable.
-        include_plotlyjs="include",
+        include_plotlyjs=False,
         default_width="100%",
         default_height="100vh",
         config={"responsive": True, "displayModeBar": True, "displaylogo": False},
     )
-    chart_path.write_text(
+    page_html = (
         "<!doctype html><html><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width, initial-scale=1'>"
         "<title>TEAMS Chart</title>"
         "<style>html,body{margin:0;width:100%;height:100%;background:#0E1117;overflow:hidden;}"
         ".plotly-graph-div{width:100vw!important;height:100vh!important;}</style>"
+        "<script src='./plotly.min.js'></script>"
         "</head><body>"
         f"{chart_html}"
-        "</body></html>",
-        encoding="utf-8",
     )
+    page_html += "</body></html>"
+    if not chart_path.exists() or chart_path.read_text(encoding="utf-8") != page_html:
+        chart_path.write_text(page_html, encoding="utf-8")
     # Build a URL relative to the current Streamlit base path.
     # Avoid hard-coding localhost/port and avoid assuming baseUrlPath="/app".
     base = (st.get_option("server.baseUrlPath") or "").strip("/")
