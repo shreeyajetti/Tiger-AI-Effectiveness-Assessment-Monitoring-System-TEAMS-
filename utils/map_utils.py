@@ -209,9 +209,8 @@ def popout_link(fig, key, label="Full screen chart"):
     base_prefix = f"/{base}" if base else ""
     chart_url = f"{base_prefix}/static/charts/{safe_key}.html"
     st.markdown(
-        f'<a class="teams-popout-link" href="{chart_url}" target="_top" '
-        f'onclick="window.top.location.href=\'{chart_url}\'; return false;">'
-        f'⛶ {label}</a>',
+        f'<a class="teams-popout-link" href="{chart_url}" target="_self" rel="noopener noreferrer">'
+        f'Open chart: {label}</a>',
         unsafe_allow_html=True,
     )
 
