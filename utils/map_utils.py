@@ -186,7 +186,8 @@ def popout_link(fig, key, label="Full screen chart"):
     chart_path = chart_dir / f"{safe_key}.html"
     chart_html = fig.to_html(
         full_html=False,
-        include_plotlyjs="cdn",
+        # Bundle plotly.js so the popout works even if CDN/network is unavailable.
+        include_plotlyjs="include",
         default_width="100%",
         default_height="100vh",
         config={"responsive": True, "displayModeBar": True, "displaylogo": False},
@@ -202,7 +203,11 @@ def popout_link(fig, key, label="Full screen chart"):
         "</body></html>",
         encoding="utf-8",
     )
-    chart_url = f"http://localhost:8501/app/static/charts/{safe_key}.html"
+    # Build a URL relative to the current Streamlit base path.
+    # Avoid hard-coding localhost/port and avoid assuming baseUrlPath="/app".
+    base = (st.get_option("server.baseUrlPath") or "").strip("/")
+    base_prefix = f"/{base}" if base else ""
+    chart_url = f"{base_prefix}/static/charts/{safe_key}.html"
     st.markdown(
         f'<a class="teams-popout-link" href="{chart_url}" target="_top" '
         f'onclick="window.top.location.href=\'{chart_url}\'; return false;">'
