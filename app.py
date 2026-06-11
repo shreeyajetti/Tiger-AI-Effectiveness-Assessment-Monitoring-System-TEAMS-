@@ -3,12 +3,12 @@ TEAMS - Tiger-AI Effectiveness Assessment & Monitoring System
 Navigation controller — all pages are file-based for reliable path resolution.
 """
 import streamlit as st
-from pathlib import Path
-import streamlit.components.v1 as components
 
 # Check if this is a popout request for a fullscreen chart
 popout_key = st.query_params.get("popout")
 if popout_key:
+    from utils.chart_cache import get_chart_cache
+    
     st.set_page_config(
         page_title="TEAMS Chart Viewer",
         page_icon="📊",
@@ -21,20 +21,17 @@ if popout_key:
             [data-testid="stSidebar"] { display: none !important; }
             [data-testid="stHeader"] { display: none !important; }
             [data-testid="stDecoration"] { display: none !important; }
-            .main .block-container { padding: 0 !important; max-width: 100vw !important; }
-            iframe { width: 100vw !important; height: 100vh !important; border: none; }
+            .main .block-container { padding: 20px !important; max-width: 100vw !important; }
         </style>
     """, unsafe_allow_html=True)
     
-    # Read and render the stored HTML file directly (bypassing the static folder MIME issue)
-    repo_root = Path(__file__).resolve().parent
-    chart_file = repo_root / "static" / "charts" / f"{popout_key}.html"
+    # Retrieve the figure from the globally shared cache
+    fig = get_chart_cache().get(popout_key)
     
-    if chart_file.exists():
-        html_content = chart_file.read_text(encoding="utf-8")
-        components.html(html_content, height=850, scrolling=False)
+    if fig:
+        st.plotly_chart(fig, use_container_width=True)
     else:
-        st.error(f"Chart '{popout_key}' not found.")
+        st.warning("Chart session expired. Please go back to the main dashboard and click 'Open chart' again.")
     st.stop()
 
 st.set_page_config(

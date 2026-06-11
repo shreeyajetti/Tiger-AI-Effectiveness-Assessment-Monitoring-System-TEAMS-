@@ -179,32 +179,12 @@ def divider():
 
 
 def popout_link(fig, key, label="Full screen chart"):
-    """Write the figure to a standalone static page and link to it via query parameters."""
+    """Store the figure in the global in-memory cache and link to it via query parameters."""
     safe_key = re.sub(r"[^a-zA-Z0-9_-]+", "_", key).strip("_")
-    repo_root = Path(__file__).resolve().parent.parent
-    chart_dir = repo_root / "static" / "charts"
-    chart_dir.mkdir(parents=True, exist_ok=True)
-    chart_path = chart_dir / f"{safe_key}.html"
-    chart_html = fig.to_html(
-        full_html=False,
-        include_plotlyjs=False,
-        default_width="100%",
-        default_height="100vh",
-        config={"responsive": True, "displayModeBar": True, "displaylogo": False},
-    )
-    page_html = (
-        "<!doctype html><html><head><meta charset='utf-8'>"
-        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
-        "<title>TEAMS Chart</title>"
-        "<style>html,body{margin:0;width:100%;height:100%;background:#0E1117;overflow:hidden;}"
-        ".plotly-graph-div{width:100vw!important;height:100vh!important;}</style>"
-        "<script src='https://cdn.plot.ly/plotly-2.29.0.min.js'></script>"
-        "</head><body>"
-        f"{chart_html}"
-    )
-    page_html += "</body></html>"
-    if not chart_path.exists() or chart_path.read_text(encoding="utf-8") != page_html:
-        chart_path.write_text(page_html, encoding="utf-8")
+    
+    # Store figure in the global in-memory cache
+    from utils.chart_cache import get_chart_cache
+    get_chart_cache()[safe_key] = fig
     
     # Build a URL relative to the current Streamlit base path using query parameters.
     base = (st.get_option("server.baseUrlPath") or "").strip("/")
