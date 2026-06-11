@@ -179,14 +179,11 @@ def divider():
 
 
 def popout_link(fig, key, label="Full screen chart"):
-    """Write the figure to a standalone static page and link to it in the same browser tab."""
+    """Write the figure to a standalone static page and link to it via query parameters."""
     safe_key = re.sub(r"[^a-zA-Z0-9_-]+", "_", key).strip("_")
     repo_root = Path(__file__).resolve().parent.parent
     chart_dir = repo_root / "static" / "charts"
     chart_dir.mkdir(parents=True, exist_ok=True)
-    plotly_bundle_path = chart_dir / "plotly.min.js"
-    if not plotly_bundle_path.exists():
-        plotly_bundle_path.write_text(get_plotlyjs(), encoding="utf-8")
     chart_path = chart_dir / f"{safe_key}.html"
     chart_html = fig.to_html(
         full_html=False,
@@ -201,20 +198,20 @@ def popout_link(fig, key, label="Full screen chart"):
         "<title>TEAMS Chart</title>"
         "<style>html,body{margin:0;width:100%;height:100%;background:#0E1117;overflow:hidden;}"
         ".plotly-graph-div{width:100vw!important;height:100vh!important;}</style>"
-        "<script src='./plotly.min.js'></script>"
+        "<script src='https://cdn.plot.ly/plotly-2.29.0.min.js'></script>"
         "</head><body>"
         f"{chart_html}"
     )
     page_html += "</body></html>"
     if not chart_path.exists() or chart_path.read_text(encoding="utf-8") != page_html:
         chart_path.write_text(page_html, encoding="utf-8")
-    # Build a URL relative to the current Streamlit base path.
-    # Avoid hard-coding localhost/port and avoid assuming baseUrlPath="/app".
+    
+    # Build a URL relative to the current Streamlit base path using query parameters.
     base = (st.get_option("server.baseUrlPath") or "").strip("/")
     base_prefix = f"/{base}" if base else ""
-    chart_url = f"{base_prefix}/static/charts/{safe_key}.html"
+    chart_url = f"{base_prefix}/?popout={safe_key}"
     st.markdown(
-        f'<a class="teams-popout-link" href="{chart_url}" target="_self" rel="noopener noreferrer">'
+        f'<a class="teams-popout-link" href="{chart_url}" target="_blank" rel="noopener noreferrer">'
         f'Open chart: {label}</a>',
         unsafe_allow_html=True,
     )
