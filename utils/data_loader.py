@@ -157,6 +157,17 @@ def load_tiger_deaths():
     return df
 
 
+@st.cache_data(ttl=3600)
+def load_predictions():
+    """Load reserve-level population and risk predictions from CSV."""
+    path = os.path.join(DATA_DIR, "predictions.csv")
+    df = pd.read_csv(path)
+    df["predicted_population"] = pd.to_numeric(df["predicted_population"], errors="coerce").fillna(0).astype(int)
+    df["performance_index"] = pd.to_numeric(df["performance_index"], errors="coerce").fillna(0.0)
+    df["at_risk"] = df["at_risk"].astype(str).str.lower() == "true"
+    return df
+
+
 def get_national_trend_df():
     """Return the national tiger population trend (1973-2022) as a DataFrame."""
     df = pd.DataFrame(list(NATIONAL_TREND.items()),
