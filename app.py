@@ -4,6 +4,36 @@ Navigation controller — all pages are file-based for reliable path resolution.
 """
 import streamlit as st
 
+# Check if this is a popout request for a fullscreen chart
+popout_key = st.query_params.get("popout")
+if popout_key:
+    from utils.chart_cache import get_chart_cache
+    
+    st.set_page_config(
+        page_title="TEAMS Chart Viewer",
+        page_icon="📊",
+        layout="wide",
+        initial_sidebar_state="collapsed",
+    )
+    # Inject styling to hide all Streamlit structural chrome (header, sidebar, padding)
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] { display: none !important; }
+            [data-testid="stHeader"] { display: none !important; }
+            [data-testid="stDecoration"] { display: none !important; }
+            .main .block-container { padding: 20px !important; max-width: 100vw !important; }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # Retrieve the figure from the globally shared cache
+    fig = get_chart_cache().get(popout_key)
+    
+    if fig:
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("Chart session expired. Please go back to the main dashboard and click 'Open chart' again.")
+    st.stop()
+
 st.set_page_config(
     page_title="TEAMS - Tiger Conservation Dashboard",
     page_icon="🐯",
@@ -17,9 +47,10 @@ state_page    = st.Page("pages/02_state_explorer.py",    title="State Explorer")
 finance_page  = st.Page("pages/03_financial_analysis.py", title="Financial Analysis")
 mortality_page= st.Page("pages/04_mortality_conflict.py", title="Mortality & Conflict")
 growth_page   = st.Page("pages/05_growth_analysis.py",    title="Growth & Projections")
+bot_page      = st.Page("pages/05_teams_bot.py",         title="TEAMS Chatbot")
 
 pg = st.navigation({
-    "TEAMS": [home_page, national_page, state_page, finance_page, mortality_page, growth_page]
+    "TEAMS": [home_page, national_page, state_page, finance_page, mortality_page, growth_page, bot_page]
 })
 
 pg.run()

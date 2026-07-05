@@ -6,6 +6,10 @@ markdown parser treating 4-space-indented lines as code blocks.
 """
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
+from pathlib import Path
+from plotly.offline.offline import get_plotlyjs
+import re
 
 # ── Color palette ──
 PRIMARY = "#1B4332"
@@ -59,6 +63,8 @@ def apply_dark_layout(fig, **kwargs):
         title_font=dict(size=12, color=MUTED_TEXT),
         tickfont=dict(size=11, color=MUTED_TEXT),
     )
+    # Ensure title text is always defined (avoid Plotly showing 'undefined' when title font exists)
+    fig.update_layout(title_text="")
     return fig
 
 
@@ -169,6 +175,25 @@ def divider():
     return (
         f'<div style="height:1px;margin:28px 0;'
         f'background:linear-gradient(90deg,transparent,{BORDER_ACCENT},transparent);"></div>'
+    )
+
+
+def popout_link(fig, key, label="Full screen chart"):
+    """Store the figure in the global in-memory cache and link to it via query parameters."""
+    safe_key = re.sub(r"[^a-zA-Z0-9_-]+", "_", key).strip("_")
+    
+    # Store figure in the global in-memory cache
+    from utils.chart_cache import get_chart_cache
+    get_chart_cache()[safe_key] = fig
+    
+    # Build a URL relative to the current Streamlit base path using query parameters.
+    base = (st.get_option("server.baseUrlPath") or "").strip("/")
+    base_prefix = f"/{base}" if base else ""
+    chart_url = f"{base_prefix}/?popout={safe_key}"
+    st.markdown(
+        f'<a class="teams-popout-link" href="{chart_url}" target="_blank" rel="noopener noreferrer">'
+        f'Open chart: {label}</a>',
+        unsafe_allow_html=True,
     )
 
 
@@ -303,6 +328,21 @@ GLOBAL_CSS = """
     }
 
     /* ── Hide Streamlit branding ── */
+    .teams-popout-link {
+        display: inline-flex;
+        align-items: center;
+        margin: -8px 0 8px 0;
+        color: #F59E0B !important;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-decoration: none !important;
+        letter-spacing: 0.2px;
+    }
+    .teams-popout-link:hover {
+        color: #FBBF24 !important;
+        text-decoration: underline !important;
+    }
+
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     header[data-testid="stHeader"] {

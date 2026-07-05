@@ -16,7 +16,7 @@ from utils.map_utils import (GLOBAL_CSS, stat_card, stat_card_mini, section_head
                               page_header, apply_dark_layout, create_india_map, divider,
                               ACCENT, ACCENT_LIGHT, ALERT, PRIMARY, PRIMARY_LIGHT,
                               PRIMARY_DARK, TEXT_COLOR, MUTED_TEXT, BORDER_SUBTLE,
-                              SUCCESS, INFO)
+                              SUCCESS, INFO, popout_link)
 
 
 st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
@@ -100,6 +100,7 @@ with tab_map:
         ),
         height=620,
     )
+    popout_link(fig_map, "national_map_popout", "Pop out chart")
     event = st.plotly_chart(fig_map, use_container_width=True,
                              on_select="rerun", key="reserve_map")
 
@@ -214,6 +215,7 @@ with tab_bar:
         showarrow=False, font=dict(size=10, color=MUTED_TEXT),
         align="right", bgcolor="rgba(14,17,23,0.5)", borderpad=6
     )
+    popout_link(fig_bar, "national_state_bar_popout", "Pop out chart")
     st.plotly_chart(fig_bar, use_container_width=True)
 
 # ── Tab 3: National trend ──
@@ -226,7 +228,7 @@ with tab_trend:
     fig_trend.add_trace(go.Scatter(
         x=national_trend["year"], y=national_trend["population"],
         mode="none", fill="tozeroy", fillcolor="rgba(245,158,11,0.06)",
-        showlegend=False
+        name="", showlegend=False
     ))
     fig_trend.add_trace(go.Scatter(
         x=national_trend["year"], y=national_trend["population"],
@@ -260,6 +262,7 @@ with tab_trend:
     apply_dark_layout(fig_trend, height=430, showlegend=False,
                       xaxis_title="Census Year", yaxis_title="Tiger Population (All-India)")
     fig_trend.update_xaxes(dtick=5)
+    popout_link(fig_trend, "national_trend_popout", "Pop out chart")
     st.plotly_chart(fig_trend, use_container_width=True)
 
     with st.expander("📚 Methodology Note — Historical Population Estimates"):

@@ -12,7 +12,7 @@ from utils.data_loader import (load_census, load_funds, load_human_deaths,
 from utils.map_utils import (GLOBAL_CSS, stat_card, section_header, apply_dark_layout,
                               ACCENT, ACCENT_LIGHT, ALERT, PRIMARY, PRIMARY_LIGHT,
                               PRIMARY_DARK, TEXT_COLOR, MUTED_TEXT,
-                              BORDER_SUBTLE, BORDER_ACCENT, SUCCESS, INFO)
+                              BORDER_SUBTLE, BORDER_ACCENT, SUCCESS, INFO, popout_link)
 
 st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
@@ -63,11 +63,25 @@ with st.sidebar:
         f'border-radius:10px;border:1px solid {PRIMARY}33;">'
         f'<p style="color:{ACCENT};font-size:0.6rem;letter-spacing:1.5px;'
         f'font-weight:700;margin:0 0 6px 0;">DATA SOURCES</p>'
-        f'<p style="color:{TEXT_COLOR};font-size:0.72rem;margin:0;line-height:1.7;">'
-        f'NTCA Tiger Census<br>Wildlife Institute of India<br>Project Tiger Fund Records</p>'
+        f'<p style="color:{TEXT_COLOR};font-size:0.72rem;margin:0;line-height:1.7;">Use links below</p>'
         f'</div></div>'
     )
     st.markdown(sb, unsafe_allow_html=True)
+    st.markdown(
+        '<a href="https://ntca.gov.in/monitoring/" target="_top" '
+        'onclick="window.top.location.href=\'https://ntca.gov.in/monitoring/\'; return false;">NTCA Tiger Monitoring</a>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<a href="https://wii.gov.in/tiger-cell" target="_top" '
+        'onclick="window.top.location.href=\'https://wii.gov.in/tiger-cell\'; return false;">WII Tiger Cell</a>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<a href="https://moef.gov.in/" target="_top" '
+        'onclick="window.top.location.href=\'https://moef.gov.in/\'; return false;">MoEFCC</a>',
+        unsafe_allow_html=True,
+    )
 
 # ── Hero banner ──
 hero = (
@@ -131,7 +145,7 @@ fig = go.Figure()
 fig.add_trace(go.Scatter(
     x=national["year"], y=national["population"],
     mode="none", fill="tozeroy",
-    fillcolor="rgba(245,158,11,0.07)", showlegend=False
+    fillcolor="rgba(245,158,11,0.07)", name="", showlegend=False
 ))
 fig.add_trace(go.Scatter(
     x=national["year"], y=national["population"],
@@ -153,6 +167,7 @@ apply_dark_layout(fig, height=380, showlegend=False,
                   xaxis_title="Census Year", yaxis_title="Tiger Population")
 fig.update_xaxes(dtick=5, tickmode="linear")
 fig.update_yaxes(rangemode="tozero")
+popout_link(fig, "home_national_trend_popout", "Pop out chart")
 st.plotly_chart(fig, use_container_width=True)
 
 st.markdown(f'<div style="height:8px;"></div>', unsafe_allow_html=True)
@@ -172,6 +187,7 @@ with left:
             colorscale=[[0, PRIMARY_LIGHT], [0.5, ACCENT], [1.0, ACCENT_LIGHT]],
             line=dict(color="rgba(0,0,0,0)", width=0),
         ),
+        name="",
         text=[f"{int(v):,}" for v in top10["pop_2022"]],
         textposition="outside",
         textfont=dict(color=MUTED_TEXT, size=11),
@@ -180,6 +196,7 @@ with left:
     apply_dark_layout(fig2, height=370, showlegend=False,
                       xaxis_title="Tigers (2022)", yaxis_title="")
     fig2.update_yaxes(autorange="reversed")
+    popout_link(fig2, "home_top_states_popout", "Pop out chart")
     st.plotly_chart(fig2, use_container_width=True)
 
 with right:
@@ -187,6 +204,8 @@ with right:
         "Total Conservation Funds (₹ Lakh) vs. Population by State"), unsafe_allow_html=True)
 
     scatter_df = summary[(summary["pop_2022"] > 0) & (summary["total_funds_lakh"] > 0)].copy()
+    # Ensure label column is safe for Plotly text/hover (avoid undefined)
+    scatter_df["state"] = scatter_df["state"].fillna("").astype(str)
     fig3 = go.Figure()
     fig3.add_trace(go.Scatter(
         x=scatter_df["total_funds_lakh"],
@@ -213,6 +232,7 @@ with right:
     ))
     apply_dark_layout(fig3, height=370, showlegend=False,
                       xaxis_title="Total Funds (₹ Lakh)", yaxis_title="Tiger Count (2022)")
+    popout_link(fig3, "home_funding_vs_tigers_popout", "Pop out chart")
     st.plotly_chart(fig3, use_container_width=True)
 
 st.markdown(f'<div style="height:8px;"></div>', unsafe_allow_html=True)
@@ -223,6 +243,11 @@ st.markdown(section_header("Human Conflict & Tiger Mortality Overview",
 
 hcol, tcol = st.columns(2)
 with hcol:
+    st.markdown(
+        '<div style="font-size:0.96rem;font-weight:700;color:' + TEXT_COLOR + ';'
+        'margin-bottom:10px;letter-spacing:0.4px;">Human deaths</div>',
+        unsafe_allow_html=True,
+    )
     hd_pivot = (hdeaths.groupby(["year", "state"])["deaths_imputed"].sum().reset_index())
     top_conflict = (hd_pivot.groupby("state")["deaths_imputed"].sum().nlargest(10).index.tolist())
     hd_top = hd_pivot[hd_pivot["state"].isin(top_conflict)]
@@ -233,15 +258,22 @@ with hcol:
         y=hd_matrix.index.tolist(),
         colorscale=[[0, PRIMARY_DARK], [0.3, PRIMARY], [0.7, ACCENT], [1, ALERT]],
         hovertemplate="<b>%{y}</b> · %{x}<br>Deaths: <b>%{z:.0f}</b><extra></extra>",
+        name="",
         showscale=True,
         colorbar=dict(thickness=12, len=0.8, tickfont=dict(size=9)),
     ))
     apply_dark_layout(fig4, height=310, showlegend=False,
                       title="Human Deaths by Tiger Attacks (Top 10 States)")
     fig4.update_xaxes(tickangle=-45, tickfont=dict(size=9))
+    popout_link(fig4, "home_human_heatmap_popout", "Pop out chart")
     st.plotly_chart(fig4, use_container_width=True)
 
 with tcol:
+    st.markdown(
+        '<div style="font-size:0.96rem;font-weight:700;color:' + TEXT_COLOR + ';'
+        'margin-bottom:10px;letter-spacing:0.4px;">Tiger deaths</div>',
+        unsafe_allow_html=True,
+    )
     td_pivot = (tdeaths.groupby(["year", "state"])["total_deaths_imputed"].sum().reset_index())
     top_td = (td_pivot.groupby("state")["total_deaths_imputed"].sum().nlargest(10).index.tolist())
     td_top = td_pivot[td_pivot["state"].isin(top_td)]
@@ -252,12 +284,14 @@ with tcol:
         y=td_matrix.index.tolist(),
         colorscale=[[0, PRIMARY_DARK], [0.3, PRIMARY], [0.7, "#F97316"], [1, ALERT]],
         hovertemplate="<b>%{y}</b> · %{x}<br>Deaths: <b>%{z:.0f}</b><extra></extra>",
+        name="",
         showscale=True,
         colorbar=dict(thickness=12, len=0.8, tickfont=dict(size=9)),
     ))
     apply_dark_layout(fig5, height=310, showlegend=False,
                       title="Tiger Mortality by State (Top 10 States)")
     fig5.update_xaxes(tickangle=-45, tickfont=dict(size=9))
+    popout_link(fig5, "home_tiger_heatmap_popout", "Pop out chart")
     st.plotly_chart(fig5, use_container_width=True)
 
 # ── Quick nav cards ──
