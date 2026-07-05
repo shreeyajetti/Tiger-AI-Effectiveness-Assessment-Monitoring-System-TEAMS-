@@ -22,9 +22,10 @@ st.markdown(page_header(
 @st.cache_data
 def load_data():
     try:
-        density_df = pd.read_csv(r"C:\UNI\TEAMS\original data\Growth\tiger_density_matrix_separate_final.csv")
-        proj_df = pd.read_csv(r"C:\UNI\TEAMS\original data\Growth\tiger_population_matrix_2030_projection.csv")
-        thresholds_df = pd.read_excel(r"C:\UNI\TEAMS\original data\Growth\state_density_thresholds.xlsx")
+        data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+        density_df = pd.read_csv(os.path.join(data_dir, "tiger_density_matrix_separate_final.csv"))
+        proj_df = pd.read_csv(os.path.join(data_dir, "tiger_population_matrix_2030_projection.csv"))
+        thresholds_df = pd.read_excel(os.path.join(data_dir, "state_density_thresholds.xlsx"))
         return density_df, proj_df, thresholds_df
     except Exception as e:
         st.error(f"Error loading data: {e}")
