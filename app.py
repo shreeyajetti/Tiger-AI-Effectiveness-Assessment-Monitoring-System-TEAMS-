@@ -16,9 +16,10 @@ national_page = st.Page("pages/01_national_overview.py", title="National Overvie
 state_page    = st.Page("pages/02_state_explorer.py",    title="State Explorer")
 finance_page  = st.Page("pages/03_financial_analysis.py", title="Financial Analysis")
 mortality_page= st.Page("pages/04_mortality_conflict.py", title="Mortality & Conflict")
+growth_page   = st.Page("pages/05_growth_analysis.py",    title="Growth & Projections")
 
 pg = st.navigation({
-    "TEAMS": [home_page, national_page, state_page, finance_page, mortality_page]
+    "TEAMS": [home_page, national_page, state_page, finance_page, mortality_page, growth_page]
 })
 
 pg.run()
