@@ -307,6 +307,15 @@ with tab_reserves:
     else:
         for _, row in s_reserves.iterrows():
             total_area = int(row["core_area_km2"] + row["buffer_area_km2"])
+            
+            # Formatting fragmentation score
+            frag = row.get("fragmentation_score")
+            if pd.isna(frag):
+                frag_html = '<span style="color:#94A3B8;">N/A</span>'
+            else:
+                frag_color = ALERT if frag >= 0.5 else (ACCENT if frag >= 0.3 else SUCCESS)
+                frag_html = f'<span style="color:{frag_color};font-weight:700;">{frag:.2f}</span>'
+                
             r_html = (
                 f'<div style="background:linear-gradient(135deg,rgba(22,43,35,0.5),rgba(14,17,23,0.7));'
                 f'border:1px solid {BORDER_SUBTLE};border-left:3px solid {ACCENT}55;'
@@ -318,7 +327,7 @@ with tab_reserves:
                 f'<p style="color:{MUTED_TEXT};font-size:0.75rem;margin:0;">'
                 f'{row["latitude"]:.2f}°N, {row["longitude"]:.2f}°E</p>'
                 f'</div>'
-                f'<div style="display:flex;gap:20px;flex-wrap:wrap;">'
+                f'<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">'
                 f'<div style="text-align:center;">'
                 f'<p style="color:{ACCENT};font-size:1rem;font-weight:700;margin:0;">{int(row["core_area_km2"]):,}</p>'
                 f'<p style="color:{MUTED_TEXT};font-size:0.65rem;margin:0;">Core km²</p></div>'
@@ -328,6 +337,9 @@ with tab_reserves:
                 f'<div style="text-align:center;">'
                 f'<p style="color:{SUCCESS};font-size:1rem;font-weight:700;margin:0;">{total_area:,}</p>'
                 f'<p style="color:{MUTED_TEXT};font-size:0.65rem;margin:0;">Total km²</p></div>'
+                f'<div style="text-align:center;border-left:1px solid rgba(255,255,255,0.1);padding-left:15px;">'
+                f'<p style="font-size:1rem;margin:0;line-height:1;">{frag_html}</p>'
+                f'<p style="color:{MUTED_TEXT};font-size:0.65rem;margin:4px 0 0 0;">Frag. Score</p></div>'
                 f'</div></div>'
             )
             st.markdown(r_html, unsafe_allow_html=True)

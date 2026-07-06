@@ -11,7 +11,9 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.data_loader import (load_census, get_national_trend_df,
                                 get_reserves_with_population,
-                                get_imputation_explanation)
+                                get_imputation_explanation,
+                                load_funding_geographical_area_year,
+                                get_reserve_core_area_for_year)
 from utils.map_utils import (GLOBAL_CSS, stat_card, stat_card_mini, section_header,
                               page_header, apply_dark_layout, create_india_map, divider,
                               ACCENT, ACCENT_LIGHT, ALERT, PRIMARY, PRIMARY_LIGHT,
@@ -25,17 +27,17 @@ st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 with st.spinner("Loading national data..."):
     census = load_census()
     national_trend = get_national_trend_df()
+    agg_df = load_funding_geographical_area_year()
     reserves_pop = get_reserves_with_population(2022)
 
 # ── Derived stats ──
+total_2022   = int(agg_df[agg_df["year"] == 2022]["tiger_count"].values[0])
+total_2006   = int(agg_df[agg_df["year"] == 2006]["tiger_count"].values[0])
+growth_pct   = round(((total_2022 - total_2006) / max(total_2006, 1)) * 100, 1)
+
 census_2022 = census[census["year"] == 2022]
-census_2006 = census[census["year"] == 2006]
 state_pop_2022 = census_2022.groupby("state")["population_imputed"].sum().reset_index()
 state_pop_2022.columns = ["state", "population"]
-
-total_2022 = int(state_pop_2022["population"].sum())
-total_2006 = int(census_2006["population_imputed"].sum())
-growth_pct = round(((total_2022 - total_2006) / max(total_2006, 1)) * 100, 1)
 
 top_state = state_pop_2022.sort_values("population", ascending=False).iloc[0]
 
@@ -74,28 +76,63 @@ tab_map, tab_bar, tab_trend, tab_data = st.tabs([
 
 # ── Tab 1: Reserve bubble map ──
 with tab_map:
-    st.markdown(section_header("India Tiger Reserve Map",
-        "Bubble Size = Estimated Reserve Population (Proportional from State Census). Color = Density per 100 km²."),
-        unsafe_allow_html=True)
+    col_yr, col_color = st.columns([1, 1])
+    with col_yr:
+        year_sel = st.selectbox("Census Year", [2022, 2018, 2014, 2010, 2006],
+                                index=0, key="map_year")
+    with col_color:
+        map_color_metric = st.selectbox(
+            "Color Map By",
+            ["Density (per 100 km²)", "Habitat Fragmentation Score"],
+            index=0,
+            key="map_color_metric"
+        )
 
-    year_sel = st.selectbox("Census Year", [2022, 2018, 2014, 2010, 2006],
-                            index=0, key="map_year")
     if year_sel != 2022:
         reserves_pop = get_reserves_with_population(year_sel)
 
+    # Calculate NDVI difference for hover display
+    reserves_pop["ndvi_change"] = reserves_pop["ndvi_2022"] - reserves_pop["ndvi_2015"]
     reserves_pop["bubble_size"] = reserves_pop["population"].clip(lower=3)
+    
+    total_core_area = get_reserve_core_area_for_year(year_sel)
+
+    st.markdown(section_header(
+        "India Tiger Reserve Map",
+        f"Bubble Size = Est. Population. Total Core Reserve Area in {year_sel}: {total_core_area:,.2f} km²."
+    ), unsafe_allow_html=True)
+
+    if map_color_metric == "Habitat Fragmentation Score":
+        color_col = "fragmentation_score"
+        # Low fragmentation = green (good), High fragmentation = red (critical)
+        color_scale = [[0, SUCCESS], [0.4, ACCENT], [1.0, ALERT]]
+        colorbar_title = "Fragmentation<br>Score"
+    else:
+        color_col = "density_per_100km2"
+        color_scale = [[0, "#1B4332"], [0.3, "#2D6A4F"], [0.6, "#F59E0B"], [1.0, "#EF4444"]]
+        colorbar_title = "Density<br>/ 100 km²"
 
     fig_map = create_india_map(
-        reserves_pop, size_col="bubble_size", color_col="density_per_100km2",
+        reserves_pop, size_col="bubble_size", color_col=color_col,
         hover_name="reserve_name",
-        hover_data={"state": True, "population": True,
-                    "core_area_km2": True, "bubble_size": False,
-                    "latitude": False, "longitude": False},
+        hover_data={
+            "state": True,
+            "population": True,
+            "core_area_km2": True,
+            "density_per_100km2": ":.2f",
+            "fragmentation_score": ":.2f",
+            "ndvi_2022": ":.2f",
+            "ndvi_change": ":.2f",
+            "bubble_size": False,
+            "latitude": False,
+            "longitude": False
+        },
+        color_scale=color_scale,
         title="", size_max=38,
     )
     fig_map.update_layout(
         coloraxis_colorbar=dict(
-            title=dict(text="Density<br>/ 100 km²", font=dict(size=11)),
+            title=dict(text=colorbar_title, font=dict(size=11)),
             tickfont=dict(size=10), len=0.6, thickness=14
         ),
         height=620,
@@ -121,11 +158,12 @@ with tab_map:
                 f'{sel["reserve_name"]} Tiger Reserve</h2>'
                 f'<p style="color:{MUTED_TEXT};margin:0 0 18px 0;font-size:0.82rem;">'
                 f'{sel["state"]} &bull; {sel["latitude"]:.2f}°N, {sel["longitude"]:.2f}°E'
-                f' &bull; Core: {int(sel["core_area_km2"]):,} km² &bull; Buffer: {int(sel["buffer_area_km2"]):,} km²</p>'
+                f' &bull; Core: {int(sel["core_area_km2"]):,} km² &bull; Buffer: {int(sel["buffer_area_km2"]):,} km²'
+                f' &bull; Total Area: {int(sel["total_area_km2"]):,} km²</p>'
                 f'</div>',
                 unsafe_allow_html=True
             )
-            s1, s2, s3, s4 = st.columns(4)
+            s1, s2, s3, s4, s5 = st.columns(5)
             with s1:
                 st.markdown(stat_card_mini("Est. Population", f"~{int(sel['population']):,}", ACCENT), unsafe_allow_html=True)
             with s2:
@@ -133,7 +171,18 @@ with tab_map:
             with s3:
                 st.markdown(stat_card_mini("Density", f"{sel['density_per_100km2']:.2f} /100km²", PRIMARY_LIGHT), unsafe_allow_html=True)
             with s4:
-                st.markdown(stat_card_mini("Total Area", f"{int(sel['total_area_km2']):,} km²", "#A78BFA"), unsafe_allow_html=True)
+                frag = sel.get('fragmentation_score')
+                if pd.isna(frag):
+                    frag_str = "N/A"
+                    frag_color = MUTED_TEXT
+                else:
+                    frag_str = f"{frag:.2f}"
+                    frag_color = ALERT if frag >= 0.5 else (ACCENT if frag >= 0.3 else SUCCESS)
+                st.markdown(stat_card_mini("Frag. Score", frag_str, frag_color), unsafe_allow_html=True)
+            with s5:
+                ndvi = sel.get('ndvi_2022')
+                ndvi_str = f"{ndvi:.2f}" if pd.notna(ndvi) else "N/A"
+                st.markdown(stat_card_mini("NDVI (2022)", ndvi_str, "#A78BFA"), unsafe_allow_html=True)
 
             with st.expander("ℹ️ How Is This Reserve's Population Estimated?"):
                 st.info(

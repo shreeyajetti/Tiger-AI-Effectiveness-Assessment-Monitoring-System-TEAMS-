@@ -8,7 +8,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.data_loader import (load_census, load_funds, load_human_deaths,
                                 load_tiger_deaths, get_national_trend_df,
-                                get_state_summary)
+                                get_state_summary, load_funding_geographical_area_year)
 from utils.map_utils import (GLOBAL_CSS, stat_card, section_header, apply_dark_layout,
                               ACCENT, ACCENT_LIGHT, ALERT, PRIMARY, PRIMARY_LIGHT,
                               PRIMARY_DARK, TEXT_COLOR, MUTED_TEXT,
@@ -24,14 +24,16 @@ with st.spinner("Loading data..."):
     tdeaths  = load_tiger_deaths()
     national = get_national_trend_df()
     summary  = get_state_summary()
+    agg_df   = load_funding_geographical_area_year()
 
 # ── Key metrics ──
-total_2022   = int(census[census["year"] == 2022]["population_imputed"].sum())
-total_2006   = int(census[census["year"] == 2006]["population_imputed"].sum())
+total_2022   = int(agg_df[agg_df["year"] == 2022]["tiger_count"].values[0])
+total_2006   = int(agg_df[agg_df["year"] == 2006]["tiger_count"].values[0])
 growth_pct   = round(((total_2022 - total_2006) / max(total_2006, 1)) * 100, 1)
-total_funds  = funds["funds_best"].sum()
+total_funds  = agg_df["total_funding"].sum()
 total_human  = int(hdeaths["deaths_imputed"].sum())
-total_tiger  = int(tdeaths["total_deaths_imputed"].sum())
+# Excel has tiger deaths from 2011 to 2025. Filter for 2012-2024 to match the caption "Recorded Deaths (2012-2024)"
+total_tiger  = int(agg_df[(agg_df["year"] >= 2012) & (agg_df["year"] <= 2024)]["tiger_deaths"].sum())
 states_count = census["state"].nunique()
 top_state    = summary.sort_values("pop_2022", ascending=False).iloc[0]["state"]
 most_deaths  = summary.sort_values("human_deaths_total", ascending=False).iloc[0]["state"]

@@ -94,6 +94,46 @@ def load_reserves():
                  "core_area_km2", "buffer_area_km2"]
     )
     df["total_area_km2"] = df["core_area_km2"] + df["buffer_area_km2"]
+    try:
+        habitat = load_habitat()
+        df = df.merge(habitat, on="reserve_name", how="left")
+    except Exception:
+        pass
+    return df
+
+
+@st.cache_data(ttl=3600)
+def load_funding_geographical_area_year():
+    """Load aggregate annual funding and geographical area data."""
+    path = os.path.join(DATA_DIR, "funding_geographical_area_year.xlsx")
+    df = pd.read_excel(path)
+    df["year"] = df["year"].astype(int)
+    df["total_funding"] = pd.to_numeric(df["total_funding"], errors="coerce").fillna(0.0)
+    df["tiger_count"] = pd.to_numeric(df["tiger_count"], errors="coerce")
+    df["tiger_deaths"] = pd.to_numeric(df["tiger_deaths"], errors="coerce")
+    df["geographical_area"] = pd.to_numeric(df["geographical_area"], errors="coerce")
+    return df
+
+
+@st.cache_data(ttl=3600)
+def load_reserve_areas_xlsx():
+    """Load reserve areas xlsx file (original areas)."""
+    path = os.path.join(DATA_DIR, "reserve_areas.xlsx")
+    df = pd.read_excel(path)
+    df = df.dropna(subset=["year"])
+    df["year"] = df["year"].astype(int)
+    df["total_reserve_area_core"] = pd.to_numeric(df["total_reserve_area_core"], errors="coerce")
+    return df
+
+
+@st.cache_data(ttl=3600)
+def load_habitat():
+    """Load habitat data containing fragmentation scores."""
+    path = os.path.join(DATA_DIR, "habitat.csv")
+    df = pd.read_csv(path)
+    df["fragmentation_score"] = pd.to_numeric(df["fragmentation_score"], errors="coerce")
+    df["ndvi_2015"] = pd.to_numeric(df["ndvi_2015"], errors="coerce")
+    df["ndvi_2022"] = pd.to_numeric(df["ndvi_2022"], errors="coerce")
     return df
 
 
@@ -169,10 +209,45 @@ def load_predictions():
 
 
 def get_national_trend_df():
-    """Return the national tiger population trend (1973-2022) as a DataFrame."""
-    df = pd.DataFrame(list(NATIONAL_TREND.items()),
-                      columns=["year", "population"])
+    """Return the national tiger population trend (1973-2022) as a DataFrame, using Excel for 2006 onwards."""
+    hist = {
+        1973: 1827, 1979: 3015, 1984: 4005, 1989: 4334,
+        1993: 3750, 1997: 3508, 2002: 3642
+    }
+    df_hist = pd.DataFrame(list(hist.items()), columns=["year", "population"])
+    try:
+        df_xl = load_funding_geographical_area_year()
+        df_xl_filtered = df_xl[df_xl["tiger_count"].notna()][["year", "tiger_count"]].rename(columns={"tiger_count": "population"})
+        df_xl_filtered["population"] = df_xl_filtered["population"].astype(int)
+        df = pd.concat([df_hist, df_xl_filtered], ignore_index=True)
+    except Exception:
+        df = pd.DataFrame(list(NATIONAL_TREND.items()), columns=["year", "population"])
     return df.sort_values("year").reset_index(drop=True)
+
+
+def get_reserve_core_area_for_year(year: int) -> float:
+    """Return the total core reserve area for a given year using reserve_areas.xlsx with fallbacks."""
+    try:
+        df_res = load_reserve_areas_xlsx()
+        row = df_res[df_res["year"] == year]
+        if not row.empty:
+            val = row["total_reserve_area_core"].values[0]
+            if pd.notna(val):
+                return float(val)
+    except Exception:
+        pass
+    
+    try:
+        df_fund = load_funding_geographical_area_year()
+        row = df_fund[df_fund["year"] == year]
+        if not row.empty:
+            val = row["geographical_area"].values[0]
+            if pd.notna(val):
+                return float(val)
+    except Exception:
+        pass
+        
+    return float(load_reserves()["core_area_km2"].sum())
 
 
 def get_state_census_latest(year=2022):

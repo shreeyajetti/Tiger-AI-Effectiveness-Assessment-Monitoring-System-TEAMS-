@@ -10,7 +10,7 @@ import sys, os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.data_loader import (load_tiger_deaths, load_human_deaths,
-                                get_imputation_explanation)
+                                get_imputation_explanation, load_funding_geographical_area_year)
 from utils.map_utils import (GLOBAL_CSS, stat_card, stat_card_mini, section_header,
                               page_header, apply_dark_layout, divider,
                               ACCENT, ACCENT_LIGHT, ALERT, PRIMARY, PRIMARY_LIGHT,
@@ -23,9 +23,11 @@ st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 with st.spinner("Loading mortality data..."):
     tdeaths = load_tiger_deaths()
     hdeaths = load_human_deaths()
+    agg_df = load_funding_geographical_area_year()
 
 # ── Derived stats ──
-total_tiger  = int(tdeaths["total_deaths_imputed"].sum())
+# Excel has tiger deaths from 2011 to 2025. Filter for 2012-2024 to match the caption "Recorded Deaths (2012-2024)"
+total_tiger  = int(agg_df[(agg_df["year"] >= 2012) & (agg_df["year"] <= 2024)]["tiger_deaths"].sum())
 total_human  = int(hdeaths["deaths_imputed"].sum())
 total_poach  = int(tdeaths["deaths_poaching"].sum())
 total_nat    = int(tdeaths["deaths_natural_other"].sum())
@@ -92,6 +94,13 @@ with tab_tiger:
         scrutiny=("deaths_scrutiny", "sum"),
     )
 
+    # Merge with Excel for more accurate national total line
+    try:
+        annual_td = annual_td.merge(agg_df[["year", "tiger_deaths"]], on="year", how="left")
+        annual_td["plot_total"] = annual_td["tiger_deaths"].fillna(annual_td["total"])
+    except Exception:
+        annual_td["plot_total"] = annual_td["total"]
+
     fig_td_nat = go.Figure()
     fig_td_nat.add_trace(go.Bar(
         x=annual_td["year"], y=annual_td["poaching"].fillna(0),
@@ -114,11 +123,11 @@ with tab_tiger:
         hovertemplate="<b>%{x}</b><br>Scrutiny: %{y:.0f}<extra></extra>"
     ))
     fig_td_nat.add_trace(go.Scatter(
-        x=annual_td["year"], y=annual_td["total"],
-        mode="lines+markers", name="Total",
+        x=annual_td["year"], y=annual_td["plot_total"],
+        mode="lines+markers", name="Total (Official)",
         line=dict(color=TEXT_COLOR, width=2.5, dash="dot"),
         marker=dict(size=8, color=TEXT_COLOR),
-        hovertemplate="<b>%{x}</b><br>Total: %{y:.0f}<extra></extra>"
+        hovertemplate="<b>%{x}</b><br>Total (Official): %{y:.0f}<extra></extra>"
     ))
     apply_dark_layout(fig_td_nat, height=420, barmode="stack",
                       xaxis_title="Year", yaxis_title="Tiger Deaths")

@@ -371,15 +371,28 @@ def answer_query_rule_based(query: str) -> str:
                     f"- **Annual Average Funding**: {avg_fund:,.2f} Lakhs"
                 )
         else:
-            if year:
-                year_data = funds[funds["year"] == year]
-                if not year_data.empty:
-                    total_f = year_data["funds_best"].sum()
-                    return f"The total conservation funding allocated across all states in **{year}** was **{total_f:,.2f} Lakhs**."
-                return f"National funding data unavailable for the year **{year}**."
-            else:
-                total_sum = funds["funds_best"].sum()
-                return f"The total cumulative conservation funding allocated across all states in the TEAMS database is **{total_sum:,.2f} Lakhs**."
+            try:
+                from utils.data_loader import load_funding_geographical_area_year
+                agg_df = load_funding_geographical_area_year()
+                if year:
+                    row = agg_df[agg_df["year"] == year]
+                    if not row.empty:
+                        total_f = row.iloc[0]["total_funding"]
+                        return f"The total conservation funding allocated across all states in **{year}** was **{total_f:,.2f} Lakhs**."
+                    return f"National funding data unavailable for the year **{year}**."
+                else:
+                    total_sum = agg_df["total_funding"].sum()
+                    return f"The total cumulative conservation funding allocated across all states in the TEAMS database is **{total_sum:,.2f} Lakhs**."
+            except Exception:
+                if year:
+                    year_data = funds[funds["year"] == year]
+                    if not year_data.empty:
+                        total_f = year_data["funds_best"].sum()
+                        return f"The total conservation funding allocated across all states in **{year}** was **{total_f:,.2f} Lakhs**."
+                    return f"National funding data unavailable for the year **{year}**."
+                else:
+                    total_sum = funds["funds_best"].sum()
+                    return f"The total cumulative conservation funding allocated across all states in the TEAMS database is **{total_sum:,.2f} Lakhs**."
 
     # ── DEFAULT FALLBACK (Data Unavailable) ──
     return "I'm sorry, that data is unavailable in the current TEAMS dashboard records."

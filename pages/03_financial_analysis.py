@@ -9,7 +9,7 @@ import pandas as pd
 import sys, os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from utils.data_loader import load_funds, get_imputation_explanation
+from utils.data_loader import load_funds, get_imputation_explanation, load_funding_geographical_area_year
 from utils.map_utils import (GLOBAL_CSS, stat_card, stat_card_mini, section_header,
                               page_header, apply_dark_layout, divider,
                               ACCENT, ACCENT_LIGHT, ALERT, PRIMARY, PRIMARY_LIGHT,
@@ -21,16 +21,17 @@ st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
 with st.spinner("Loading funding data..."):
     funds = load_funds()
+    agg_df = load_funding_geographical_area_year()
 
 # ── Derived stats ──
-total_funds     = funds["funds_best"].sum()
+total_funds     = agg_df["total_funding"].sum()
 total_central   = funds["funds_central_share"].sum()
 total_tpf       = funds["funds_total_including_tpf"].sum()
 total_state_all = funds["funds_state_allocation"].sum()
 n_states        = funds["state"].nunique()
 top_funded_state = (funds.groupby("state")["funds_best"].sum()
-                    .idxmax() if total_funds > 0 else "N/A")
-avg_annual      = funds.groupby("year")["funds_best"].sum().mean()
+                    .idxmax() if funds["funds_best"].sum() > 0 else "N/A")
+avg_annual      = agg_df["total_funding"].mean()
 
 # ── Page header ──
 st.markdown(page_header(
@@ -217,25 +218,26 @@ with tab_trend:
         "Total Conservation Funds Released Across All States per Year"),
         unsafe_allow_html=True)
 
-    annual = funds.groupby("year", as_index=False).agg(
-        total=("funds_best", "sum"),
+    annual_csv = funds.groupby("year", as_index=False).agg(
         central=("funds_central_share", "sum"),
         tpf=("funds_total_including_tpf", "sum"),
     ).sort_values("year")
 
+    agg_df_sorted = agg_df.sort_values("year")
+
     fig_t = go.Figure()
     fig_t.add_trace(go.Scatter(
-        x=annual["year"], y=annual["tpf"].fillna(annual["total"]),
+        x=agg_df_sorted["year"], y=agg_df_sorted["total_funding"],
         mode="lines+markers+text",
-        name="Total (TPF)", line=dict(color=ACCENT, width=3, shape="spline"),
+        name="Total Funding (Official)", line=dict(color=ACCENT, width=3, shape="spline"),
         marker=dict(size=9, color=ACCENT, line=dict(width=2, color=PRIMARY_DARK)),
-        text=[f"₹{int(v):,}" if pd.notna(v) else "" for v in annual["tpf"].fillna(annual["total"])],
+        text=[f"₹{int(v):,}" if pd.notna(v) else "" for v in agg_df_sorted["total_funding"]],
         textposition="top center", textfont=dict(size=9, color=MUTED_TEXT),
         fill="tozeroy", fillcolor="rgba(245,158,11,0.05)",
         hovertemplate="<b>%{x}</b><br>Total: ₹%{y:,.0f} L<extra></extra>"
     ))
     fig_t.add_trace(go.Scatter(
-        x=annual["year"], y=annual["central"].fillna(0),
+        x=annual_csv["year"], y=annual_csv["central"].fillna(0),
         mode="lines+markers", name="Central Share",
         line=dict(color=PRIMARY_LIGHT, width=2, dash="dash"),
         marker=dict(size=7, color=PRIMARY_LIGHT),
@@ -251,8 +253,8 @@ with tab_trend:
     # Year-on-year change
     st.markdown(section_header("Year-on-Year Change",
         "Absolute Change in Total Funding Versus Prior Year"), unsafe_allow_html=True)
-    annual["yoy_change"] = annual["tpf"].fillna(annual["total"]).diff()
-    annual_yoy = annual.dropna(subset=["yoy_change"])
+    agg_df_sorted["yoy_change"] = agg_df_sorted["total_funding"].diff()
+    annual_yoy = agg_df_sorted.dropna(subset=["yoy_change"])
 
     fig_yoy = go.Figure(go.Bar(
         x=annual_yoy["year"],
