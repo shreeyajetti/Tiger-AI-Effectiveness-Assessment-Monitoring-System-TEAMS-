@@ -148,7 +148,7 @@ if not density_df.empty and not proj_df.empty:
     comp_states = st.multiselect("Select States to Compare (Max 4)", states, default=[selected_state] if selected_state else states[:2], max_selections=4)
     
     if comp_states:
-        tab1, tab2 = st.tabs(["Density Trends (Historical)", "Population Projections (up to 2030)"])
+        tab1, tab2 = st.tabs(["Density Trends (Historical)", "Population Projections"])
         
         with tab1:
             fig_density = go.Figure()
@@ -162,54 +162,124 @@ if not density_df.empty and not proj_df.empty:
             st.plotly_chart(fig_density, use_container_width=True)
             
         with tab2:
-            fig_proj = go.Figure()
+            _proj_min = int(proj_df['year'].min())
+            _proj_max = int(proj_df['year'].max())
+            proj_end_year = st.slider(
+                "Show projection up to year",
+                min_value=_proj_min,
+                max_value=_proj_max,
+                value=_proj_max,
+                step=1,
+                key="proj_end_year",
+                help="Drag to explore the trajectory up to any year. Years after 2022 are growth-capped extrapolations."
+            )
             historical_year = 2022
+            fig_proj = go.Figure()
             for s in comp_states:
                 # Historical part
-                hist_mask = proj_df['year'] <= historical_year
+                hist_mask = (proj_df['year'] <= historical_year) & (proj_df['year'] <= proj_end_year)
+                proj_mask = (proj_df['year'] >= historical_year) & (proj_df['year'] <= proj_end_year)
                 fig_proj.add_trace(go.Scatter(
                     x=proj_df[hist_mask]['year'], y=proj_df[hist_mask][s],
                     mode='lines+markers', name=f"{s} (Hist)",
                     line=dict(width=3), legendgroup=s
                 ))
-                # Projected part
-                proj_mask = proj_df['year'] >= historical_year
-                fig_proj.add_trace(go.Scatter(
-                    x=proj_df[proj_mask]['year'], y=proj_df[proj_mask][s],
-                    mode='lines+markers', name=f"{s} (Proj)",
-                    line=dict(width=3, dash='dash'), legendgroup=s, showlegend=False
-                ))
-                
-            fig_proj.add_vrect(x0=historical_year, x1=proj_df['year'].max(),
-                fillcolor=ACCENT, opacity=0.05, line_width=0, annotation_text="Projected (2024-2030)", annotation_position="top left")
+                if proj_end_year > historical_year:
+                    # Projected part (dashed)
+                    fig_proj.add_trace(go.Scatter(
+                        x=proj_df[proj_mask]['year'], y=proj_df[proj_mask][s],
+                        mode='lines+markers', name=f"{s} (Proj)",
+                        line=dict(width=3, dash='dash'), legendgroup=s, showlegend=False
+                    ))
 
-            apply_dark_layout(fig_proj, title="Population Trajectories & Projections", xaxis_title="Year", yaxis_title="Estimated Tiger Count")
+            if proj_end_year > historical_year:
+                fig_proj.add_vrect(
+                    x0=historical_year, x1=proj_end_year,
+                    fillcolor=ACCENT, opacity=0.05, line_width=0,
+                    annotation_text=f"Projected ({historical_year}–{proj_end_year})",
+                    annotation_position="top left"
+                )
+
+            apply_dark_layout(fig_proj, title=f"Population Trajectories & Projections (up to {proj_end_year})",
+                              xaxis_title="Year", yaxis_title="Estimated Tiger Count")
             st.plotly_chart(fig_proj, use_container_width=True)
 
     st.markdown(divider(), unsafe_allow_html=True)
 
-    # --- Who is Ahead ---
-    st.markdown(section_header("State Rankings & Future Outlook", "Which States Are Leading The Pack"), unsafe_allow_html=True)
-    
-    # Calculate top states by 2030 projection
-    proj_2030 = proj_df[proj_df['year'] == 2030].drop(columns=['year']).iloc[0]
-    top_3_proj = proj_2030.sort_values(ascending=False).head(3)
-    
-    # Calculate top states by latest density
-    dens_latest = density_df[density_df['year'] == density_df['year'].max()].drop(columns=['year']).iloc[0]
-    top_3_dens = dens_latest.sort_values(ascending=False).head(3)
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown(f"### 🏆 Top Projected Populations (2030)")
-        for rank, (state, pop) in enumerate(top_3_proj.items(), 1):
-            st.markdown(stat_card(f"#{rank} {state}", f"{int(pop):,} Tigers", "Projected for 2030", ACCENT), unsafe_allow_html=True)
-            
-    with c2:
-        st.markdown(f"### 🎯 Highest Densities (Latest)")
-        for rank, (state, dens) in enumerate(top_3_dens.items(), 1):
-            score = int(round(dens * 100))
-            st.markdown(stat_card(f"#{rank} {state}", f"Score: {score}", f"Raw Density: {dens:.4f}", SUCCESS), unsafe_allow_html=True)
+    # --- Data Insights / Fun Facts ---
+    st.markdown(section_header(
+        "Data Insights",
+        "What the numbers actually tell us — three surprising facts from our database"
+    ), unsafe_allow_html=True)
+
+    # Pre-compute values for the fun fact cards
+    _dens_2022 = density_df[density_df['year'] == 2022].drop(columns=['year']).iloc[0]
+    _dens_2006 = density_df[density_df['year'] == 2006].drop(columns=['year']).iloc[0]
+    _pop_2022  = proj_df[proj_df['year'] == 2022].drop(columns=['year']).iloc[0]
+    _mp_pop  = int(_pop_2022.get('Madhya Pradesh', 0))
+    _uk_pop  = int(_pop_2022.get('Uttarakhand', 0))
+    _mp_dens = _dens_2022.get('Madhya Pradesh', 0)
+    _uk_dens = _dens_2022.get('Uttarakhand', 0)
+    _uk_ratio = round(_uk_dens / _mp_dens, 1) if _mp_dens > 0 else 0
+    # Bihar growth
+    _bih_06  = _dens_2006.get('Bihar', 0)
+    _bih_22  = _dens_2022.get('Bihar', 0)
+    _bih_growth_pct = int(round((_bih_22 - _bih_06) / max(_bih_06, 1e-9) * 100))
+    # Arunachal facts
+    _ar_pop  = int(_pop_2022.get('Arunachal Pradesh', 0))
+
+    insight_cards = [
+        {
+            "emoji": "🗺️",
+            "title": "The Counting Paradox — More Tigers Doesn't Mean Denser Forest",
+            "body": (
+                f"Madhya Pradesh leads the nation with <b>~{_mp_pop:,} tigers</b> in 2022, "
+                f"but Uttarakhand is <b>{_uk_ratio}× denser</b> — {_uk_dens*100:.0f} vs {_mp_dens*100:.0f} tigers "
+                f"per 100 km² of reserve area. MP's reserves are a wide blend of Dry Deciduous "
+                f"and some High-Prey patches (threshold 6.8–12.9/100 km²), "
+                f"while Corbett &amp; Rajaji in Uttarakhand are prime High-Prey Terai habitat. "
+                f"Large forests ≠ efficient forests."
+            ),
+            "color": ACCENT,
+        },
+        {
+            "emoji": "📈",
+            "title": "Bihar's Silent Turnaround — +{pct}% Density Since 2006".format(pct=_bih_growth_pct),
+            "body": (
+                f"Despite hosting just one reserve (Valmiki Tiger Reserve), Bihar achieved "
+                f"the <b>highest proportional density growth</b> of any state in our database: "
+                f"<b>+{_bih_growth_pct}%</b> between 2006 and 2022. This is what focused protection "
+                f"in prime High-Prey Terai habitat looks like — a small, well-managed reserve "
+                f"dramatically outperforming states with far more land under protection."
+            ),
+            "color": SUCCESS,
+        },
+        {
+            "emoji": "🌿",
+            "title": "Arunachal Pradesh: Vast Forests, Invisible Tigers",
+            "body": (
+                f"Arunachal Pradesh has three reserves covering over 3,274 km² of core area "
+                f"— more than most individual states — yet our model estimates only <b>~{_ar_pop} tigers</b>. "
+                f"Its dense evergreen forests have a naturally low ecological density ceiling "
+                f"(2–5 tigers per 100 km²) and camera-trap coverage is among the thinnest in India. "
+                f"Many years in this state's timeline are extrapolated, so the true count "
+                f"could be meaningfully higher — or lower."
+            ),
+            "color": INFO,
+        },
+    ]
+
+    for card in insight_cards:
+        st.markdown(
+            f'<div style="background:linear-gradient(135deg,rgba(10,31,21,0.75),rgba(22,43,35,0.6));'
+            f'border:1px solid {card["color"]}30;border-left:4px solid {card["color"]};'
+            f'border-radius:12px;padding:20px 24px;margin:10px 0;">'
+            f'<p style="font-size:1.1rem;margin:0 0 6px 0;">'
+            f'{card["emoji"]} <b style="color:{TEXT_COLOR};">{card["title"]}</b></p>'
+            f'<p style="color:{MUTED_TEXT};font-size:0.875rem;line-height:1.65;margin:0;">'
+            f'{card["body"]}</p></div>',
+            unsafe_allow_html=True
+        )
 
 else:
     st.warning("No data available to display.")

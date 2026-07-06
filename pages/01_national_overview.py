@@ -13,7 +13,8 @@ from utils.data_loader import (load_census, get_national_trend_df,
                                 get_reserves_with_population,
                                 get_imputation_explanation,
                                 load_funding_geographical_area_year,
-                                get_reserve_core_area_for_year)
+                                get_reserve_core_area_for_year,
+                                CENSUS_YEARS)
 from utils.map_utils import (GLOBAL_CSS, stat_card, stat_card_mini, section_header,
                               page_header, apply_dark_layout, create_india_map, divider,
                               ACCENT, ACCENT_LIGHT, ALERT, PRIMARY, PRIMARY_LIGHT,
@@ -76,10 +77,29 @@ tab_map, tab_bar, tab_trend, tab_data = st.tabs([
 
 # ── Tab 1: Reserve bubble map ──
 with tab_map:
+    # Build labeled year options (2006-2026)
+    _all_years = list(range(2006, 2027))
+    _year_labels = []
+    for _y in _all_years:
+        if _y in CENSUS_YEARS:
+            _year_labels.append(str(_y))
+        elif _y < 2022:
+            _year_labels.append(f"{_y}  (interpolated)")
+        else:
+            _year_labels.append(f"{_y}  (extrapolated)")
+    _label_to_year = {lbl: yr for yr, lbl in zip(_all_years, _year_labels)}
+
     col_yr, col_color = st.columns([1, 1])
     with col_yr:
-        year_sel = st.selectbox("Census Year", [2022, 2018, 2014, 2010, 2006],
-                                index=0, key="map_year")
+        year_label_sel = st.selectbox(
+            "Year",
+            options=_year_labels,
+            index=_year_labels.index(str(2022)),
+            key="map_year",
+            help="Census years are official NTCA counts. Intermediate years are PCHIP-interpolated; "
+                 "years after 2022 are growth-capped extrapolations."
+        )
+        year_sel = _label_to_year[year_label_sel]
     with col_color:
         map_color_metric = st.selectbox(
             "Color Map By",
@@ -88,8 +108,7 @@ with tab_map:
             key="map_color_metric"
         )
 
-    if year_sel != 2022:
-        reserves_pop = get_reserves_with_population(year_sel)
+    reserves_pop = get_reserves_with_population(year_sel)
 
     # Calculate NDVI difference for hover display
     reserves_pop["ndvi_change"] = reserves_pop["ndvi_2022"] - reserves_pop["ndvi_2015"]
@@ -97,10 +116,49 @@ with tab_map:
     
     total_core_area = get_reserve_core_area_for_year(year_sel)
 
+    # Determine data type label for header
+    if year_sel in CENSUS_YEARS:
+        _data_type = "Official NTCA Census"
+    elif year_sel <= 2022:
+        _data_type = "Interpolated estimate (PCHIP)"
+    else:
+        _data_type = "Extrapolated projection"
+
     st.markdown(section_header(
         "India Tiger Reserve Map",
-        f"Bubble Size = Est. Population. Total Core Reserve Area in {year_sel}: {total_core_area:,.2f} km²."
+        f"{_data_type} · {year_sel} · Total Core Reserve Area: {total_core_area:,.0f} km²"
     ), unsafe_allow_html=True)
+
+    # ── Map legend / index ──
+    if map_color_metric == "Habitat Fragmentation Score":
+        legend_html = (
+            f'<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;'
+            f'background:rgba(10,31,21,0.55);border:1px solid {ACCENT}22;'
+            f'border-radius:10px;padding:10px 16px;margin-bottom:6px;font-size:0.78rem;">'
+            f'<span style="color:{MUTED_TEXT};font-weight:600;letter-spacing:0.08em;margin-right:4px;">LEGEND &nbsp;·</span>'
+            f'<span style="color:{TEXT_COLOR};">⬤ <b>Bubble size</b> = estimated tiger count at reserve</span>'
+            f'<span style="color:{MUTED_TEXT};">|</span>'
+            f'<span style="color:{SUCCESS};">⬛ 0.0 – 0.29</span> <span style="color:{TEXT_COLOR};margin-right:4px;">Healthy habitat</span>'
+            f'<span style="color:{ACCENT};">⬛ 0.30 – 0.49</span> <span style="color:{TEXT_COLOR};margin-right:4px;">Moderate stress</span>'
+            f'<span style="color:{ALERT};">⬛ 0.50 – 1.0</span> <span style="color:{TEXT_COLOR};">Critical fragmentation</span>'
+            f'</div>'
+        )
+    else:
+        legend_html = (
+            f'<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;'
+            f'background:rgba(10,31,21,0.55);border:1px solid {ACCENT}22;'
+            f'border-radius:10px;padding:10px 16px;margin-bottom:6px;font-size:0.78rem;">'
+            f'<span style="color:{MUTED_TEXT};font-weight:600;letter-spacing:0.08em;margin-right:4px;">LEGEND &nbsp;·</span>'
+            f'<span style="color:{TEXT_COLOR};">⬤ <b>Bubble size</b> = estimated tiger count at reserve</span>'
+            f'<span style="color:{MUTED_TEXT};">|</span>'
+            f'<span style="color:{TEXT_COLOR};">🎨 <b>Colour</b> = tigers per 100 km² of total reserve area</span>'
+            f'<span style="color:{MUTED_TEXT};">|</span>'
+            f'<span style="color:#2D6A4F;">■ Low density</span>'
+            f'<span style="color:#F59E0B;">■ Moderate</span>'
+            f'<span style="color:#EF4444;">■ High density</span>'
+            f'</div>'
+        )
+    st.markdown(legend_html, unsafe_allow_html=True)
 
     if map_color_metric == "Habitat Fragmentation Score":
         color_col = "fragmentation_score"
@@ -185,15 +243,15 @@ with tab_map:
                 st.markdown(stat_card_mini("NDVI (2022)", ndvi_str, "#A78BFA"), unsafe_allow_html=True)
 
             with st.expander("ℹ️ How Is This Reserve's Population Estimated?"):
-                st.info(
-                    f"**Proportional distribution from state-level census.**\n\n"
-                    f"The NTCA census provides data at the **state level** ({sel['state']}). "
-                    f"To estimate this reserve's population, the state total is distributed "
-                    f"proportionally based on each reserve's **core area** as a fraction of the "
-                    f"state's total core area.\n\n"
-                    f"**Formula:** `reserve_pop = state_pop × (reserve_core_km² / state_total_core_km²)`\n\n"
-                    f"This is an approximation. Actual reserve-level figures require individual camera-trap surveys."
-                )
+                    st.info(
+                        f"**{reserves_pop.iloc[0]['note'] if 'note' in reserves_pop.columns else 'Proportional distribution from state-level census.'}**\n\n"
+                        f"The NTCA census provides data at the **state level** ({sel['state']}). "
+                        f"To estimate this reserve's population, the state total is distributed "
+                        f"proportionally based on each reserve's **core area** as a fraction of the "
+                        f"state's total core area.\n\n"
+                        f"**Formula:** `reserve_pop = state_pop × (reserve_core_km² / state_total_core_km²)`\n\n"
+                        f"This is an approximation. Actual reserve-level figures require individual camera-trap surveys."
+                    )
             st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.markdown(

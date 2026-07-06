@@ -21,6 +21,9 @@ NATIONAL_TREND = {
     2006: 1411, 2010: 1706, 2014: 2226, 2018: 2967, 2022: 3682
 }
 
+# Years where NTCA conducted an official All-India census
+CENSUS_YEARS = {2006, 2010, 2014, 2018, 2022}
+
 # ── Tiger Reserve reference data (NTCA, 58 reserves) ──
 # Geo/area metadata used for mapping; populations are from state-level imputed data
 RESERVE_REF = [
@@ -251,9 +254,35 @@ def get_reserve_core_area_for_year(year: int) -> float:
 
 
 def get_state_census_latest(year=2022):
-    """Return per-state population for a given census year."""
+    """Return per-state population for a given year.
+    For official census years (2006/10/14/18/22) reads the imputed census CSV.
+    For all other years reads the projection matrix CSV so the map works for
+    interpolated / extrapolated years too.
+    """
+    if year in CENSUS_YEARS:
+        census = load_census()
+        return (census[census["year"] == year]
+                .groupby("state", as_index=False)["population_imputed"].sum()
+                .rename(columns={"population_imputed": "population"}))
+    # Non-census year: use projection matrix which covers 2006-2030 annually
+    try:
+        proj_path = os.path.join(DATA_DIR, "tiger_population_matrix_2030_projection.csv")
+        proj = pd.read_csv(proj_path)
+        proj["year"] = proj["year"].astype(int)
+        row = proj[proj["year"] == year]
+        if not row.empty:
+            state_cols = [c for c in proj.columns if c != "year"]
+            result = row[state_cols].T.reset_index()
+            result.columns = ["state", "population"]
+            result["population"] = result["population"].round(0).astype(int)
+            return result
+    except Exception:
+        pass
+    # Final fallback: nearest census year
     census = load_census()
-    return (census[census["year"] == year]
+    census_years = sorted(census["year"].unique())
+    nearest = min(census_years, key=lambda y: abs(y - year))
+    return (census[census["year"] == nearest]
             .groupby("state", as_index=False)["population_imputed"].sum()
             .rename(columns={"population_imputed": "population"}))
 
@@ -262,6 +291,7 @@ def get_reserves_with_population(year=2022):
     """
     Join reserve reference with state-level population (proportionally distributed).
     Each reserve in a state gets the state's per-km2 density × reserve core area.
+    Works for census years AND interpolated/extrapolated years via the projection matrix.
     """
     reserves = load_reserves()
     state_pop = get_state_census_latest(year)
@@ -280,7 +310,12 @@ def get_reserves_with_population(year=2022):
     merged["density_per_100km2"] = (
         merged["population"] / merged["total_area_km2"].replace(0, 1) * 100
     ).round(2)
-    merged["note"] = "Proportional estimate from state-level census data"
+    if year in CENSUS_YEARS:
+        merged["note"] = "Proportional estimate from state-level census data"
+    elif year <= 2022:
+        merged["note"] = f"Interpolated estimate ({year}) — PCHIP-smoothed between census anchor points"
+    else:
+        merged["note"] = f"Extrapolated estimate ({year}) — growth-capped projection beyond 2022 census"
     return merged
 
 
