@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.map_utils import (GLOBAL_CSS, stat_card, stat_card_mini, section_header,
                               page_header, apply_dark_layout, divider,
                               ACCENT, ACCENT_LIGHT, ALERT, PRIMARY, SUCCESS, INFO, MUTED_TEXT, TEXT_COLOR)
+from utils.data_loader import get_reserves_with_population
 
 st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
@@ -203,6 +204,96 @@ if not density_df.empty and not proj_df.empty:
             apply_dark_layout(fig_proj, title=f"Population Trajectories & Projections (up to {proj_end_year})",
                               xaxis_title="Year", yaxis_title="Estimated Tiger Count")
             st.plotly_chart(fig_proj, use_container_width=True)
+
+    st.markdown(divider(), unsafe_allow_html=True)
+
+    # --- 2026 & 2030 Projection Map Section ---
+    st.markdown(section_header(
+        "2026 & 2030 Projection Map",
+        "Visualizing future population estimates over state carrying capacity categories and tiger concentration hubs."
+    ), unsafe_allow_html=True)
+
+    c_yr, c_col = st.columns([1, 1])
+    with c_yr:
+        proj_year = st.radio("Select Projection Year", [2026, 2030], index=0, horizontal=True, key="map_proj_year")
+    with c_col:
+        map_view = st.selectbox("Color Map By", ["Forest / Habitat Category", "Tiger Concentration Hubs"], index=0, key="growth_map_color")
+
+    # Load reserve projection population
+    reserves_ref = get_reserves_with_population(proj_year)
+    
+    # Merge with thresholds to get Forest Category
+    if not thresholds_df.empty:
+        state_cat = thresholds_df.set_index("State")["Category"].to_dict()
+        reserves_ref["Forest Category"] = reserves_ref["state"].map(state_cat).fillna("Unknown")
+    else:
+        reserves_ref["Forest Category"] = "Unknown"
+
+    # Spot tiger concentrated places (density >= 12.0)
+    reserves_ref["Concentration Status"] = reserves_ref["density_per_100km2"].apply(
+        lambda d: "🔥 High Concentration Hub" if d >= 12.0 else "Standard Density Habitat"
+    )
+
+    reserves_ref["bubble_size"] = reserves_ref["population"].clip(lower=4)
+
+    if map_view == "Forest / Habitat Category":
+        color_col = "Forest Category"
+        color_discrete_map = {
+            "High-Prey Hotspot": "#10B981", # green
+            "Dry Deciduous": "#F59E0B",     # orange
+            "Blended (weighted)": "#3B82F6", # blue
+            "Sparse / Low": "#6B7280",      # grey
+            "Sparse / Low (exception)": "#9CA3AF",
+            "Mangrove (Sparse band reused)": "#8B5CF6", # purple
+            "Unknown": "#4B5563"
+        }
+        legend_title = "Forest Category"
+    else:
+        color_col = "Concentration Status"
+        color_discrete_map = {
+            "🔥 High Concentration Hub": "#EF4444", # Red
+            "Standard Density Habitat": "#10B981"  # Green
+        }
+        legend_title = "Concentration Hubs"
+
+    fig_habitat_map = px.scatter_mapbox(
+        reserves_ref,
+        lat="latitude",
+        lon="longitude",
+        size="bubble_size",
+        color=color_col,
+        hover_name="reserve_name",
+        hover_data={
+            "state": True,
+            "population": True,
+            "density_per_100km2": ":.2f",
+            "Forest Category": True,
+            "Concentration Status": True,
+            "bubble_size": False,
+            "latitude": False,
+            "longitude": False
+        },
+        color_discrete_map=color_discrete_map,
+        size_max=32,
+        zoom=4.0,
+        center={"lat": 22.5, "lon": 80.0},
+        mapbox_style="carto-positron"
+    )
+    apply_dark_layout(fig_habitat_map, height=520)
+    fig_habitat_map.update_layout(
+        mapbox=dict(style="carto-positron", center={"lat": 22.5, "lon": 80.0}, zoom=4.0),
+        legend=dict(
+            title=dict(text=legend_title, font=dict(size=11)),
+            font=dict(size=10),
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01,
+            bgcolor="rgba(14,17,23,0.7)"
+        )
+    )
+    
+    st.plotly_chart(fig_habitat_map, use_container_width=True)
 
     st.markdown(divider(), unsafe_allow_html=True)
 

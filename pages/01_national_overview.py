@@ -264,24 +264,73 @@ with tab_map:
 
 # ── Tab 2: State bar chart ──
 with tab_bar:
-    st.markdown(section_header("State-Level Tiger Population",
-        "Compare Across Census Years · Height = Imputed Population Count"),
-        unsafe_allow_html=True)
+    # Build labeled year options (2006-2026)
+    _bar_years = list(range(2006, 2027))
+    _bar_labels = []
+    for _y in _bar_years:
+        if _y in CENSUS_YEARS:
+            _bar_labels.append(str(_y))
+        elif _y < 2022:
+            _bar_labels.append(f"{_y} (Estimated)")
+        else:
+            _bar_labels.append(f"{_y} (Extrapolated)")
+    _bar_labels.reverse() # Show newest first
+    _bar_label_to_year = {lbl: yr for yr, lbl in zip(_bar_years, _bar_labels)}
 
-    yr_options = sorted(census["year"].unique(), reverse=True)
     yr_col, view_col = st.columns([1, 2])
     with yr_col:
-        selected_year = st.selectbox("Select Year", yr_options, key="bar_year")
-    with view_col:
-        show_ci = st.checkbox("Show Confidence Intervals", value=True, key="show_ci")
+        selected_year_label = st.selectbox("Select Year", _bar_labels, index=_bar_labels.index(str(2022)), key="bar_year")
+        selected_year = _bar_label_to_year[selected_year_label]
 
-    year_data = census[census["year"] == selected_year].copy()
-    year_data = year_data.groupby("state", as_index=False).agg(
-        population=("population_imputed", "sum"),
-        ci_lower=("population_ci_lower", "mean"),
-        ci_upper=("population_ci_upper", "mean"),
-        any_imputed=("was_imputed", "any")
-    ).sort_values("population", ascending=False)
+    # Determine data type and whether we have confidence intervals
+    if selected_year in CENSUS_YEARS:
+        _bar_data_type = "Official NTCA Census"
+        has_ci = True
+        year_data = census[census["year"] == selected_year].copy()
+        year_data = year_data.groupby("state", as_index=False).agg(
+            population=("population_imputed", "sum"),
+            ci_lower=("population_ci_lower", "mean"),
+            ci_upper=("population_ci_upper", "mean"),
+            any_imputed=("was_imputed", "any")
+        ).sort_values("population", ascending=False)
+    else:
+        if selected_year <= 2022:
+            _bar_data_type = "Interpolated Estimate"
+        else:
+            _bar_data_type = "Extrapolated Projection"
+        has_ci = False
+        
+        # Load from projection matrix
+        try:
+            proj_path = os.path.join(os.path.dirname(__file__), "..", "data", "tiger_population_matrix_2030_projection.csv")
+            proj = pd.read_csv(proj_path)
+            proj["year"] = proj["year"].astype(int)
+            row = proj[proj["year"] == selected_year]
+            state_cols = [c for c in proj.columns if c != "year"]
+            pop_series = row[state_cols].iloc[0]
+            year_data = pd.DataFrame({
+                "state": state_cols,
+                "population": pop_series.values
+            })
+            year_data["ci_lower"] = year_data["population"]
+            year_data["ci_upper"] = year_data["population"]
+            year_data["any_imputed"] = True # Model estimated
+            year_data = year_data.sort_values("population", ascending=False)
+        except Exception as e:
+            st.error(f"Error loading projection data: {e}")
+            year_data = pd.DataFrame(columns=["state", "population", "ci_lower", "ci_upper", "any_imputed"])
+
+    with view_col:
+        if has_ci:
+            show_ci = st.checkbox("Show Confidence Intervals", value=True, key="show_ci")
+        else:
+            st.checkbox("Show Confidence Intervals", value=False, disabled=True, key="show_ci",
+                        help="Confidence intervals are only available for official census years.")
+            show_ci = False
+
+    st.markdown(section_header("State-Level Tiger Population",
+        f"{_bar_data_type} · {selected_year} · Height = Estimated Population Count"),
+        unsafe_allow_html=True)
 
     # Color imputed states differently
     year_data["bar_color"] = year_data["any_imputed"].apply(
@@ -300,7 +349,7 @@ with tab_bar:
             symmetric=False,
             array=(year_data["ci_upper"] - year_data["population"]).clip(lower=0).tolist(),
             arrayminus=(year_data["population"] - year_data["ci_lower"]).clip(lower=0).tolist(),
-            color=f"rgba(255,255,255,0.25)",
+            color="rgba(255,255,255,0.25)",
             thickness=1.5, width=6,
             visible=show_ci
         ),
@@ -315,10 +364,17 @@ with tab_bar:
     fig_bar.update_xaxes(tickangle=-40)
 
     # Legend annotation
+    if selected_year in CENSUS_YEARS:
+        legend_text = (f"<span style='color:{ACCENT};'>■</span> Direct Count &nbsp;&nbsp;"
+                       f"<span style='color:#A78BFA;'>■</span> Includes Imputed Values")
+    elif selected_year <= 2022:
+        legend_text = f"<span style='color:#A78BFA;'>■</span> PCHIP Interpolated Estimate"
+    else:
+        legend_text = f"<span style='color:#A78BFA;'>■</span> Extrapolated Projection"
+
     fig_bar.add_annotation(
         x=0.98, y=0.97, xref="paper", yref="paper",
-        text=f"<span style='color:{ACCENT};'>■</span> Direct Count &nbsp;&nbsp;"
-             f"<span style='color:#A78BFA;'>■</span> Includes Imputed Values",
+        text=legend_text,
         showarrow=False, font=dict(size=10, color=MUTED_TEXT),
         align="right", bgcolor="rgba(14,17,23,0.5)", borderpad=6
     )
