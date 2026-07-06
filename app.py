@@ -41,13 +41,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-home_page     = st.Page("pages/home_page.py",            title="Home Page",            default=True)
-national_page = st.Page("pages/01_national_overview.py", title="National Overview")
-state_page    = st.Page("pages/02_state_explorer.py",    title="State Explorer")
-finance_page  = st.Page("pages/03_financial_analysis.py", title="Financial Analysis")
-mortality_page= st.Page("pages/04_mortality_conflict.py", title="Mortality & Conflict")
-growth_page   = st.Page("pages/05_growth_analysis.py",    title="Growth & Projections")
-bot_page      = st.Page("pages/05_teams_bot.py",         title="TEAMS Chatbot")
+home_page     = st.Page("views/home_page.py",            title="Home Page",            default=True)
+national_page = st.Page("views/01_national_overview.py", title="National Overview")
+state_page    = st.Page("views/02_state_explorer.py",    title="State Explorer")
+finance_page  = st.Page("views/03_financial_analysis.py", title="Financial Analysis")
+mortality_page= st.Page("views/04_mortality_conflict.py", title="Mortality & Conflict")
+growth_page   = st.Page("views/05_growth_analysis.py",    title="Growth & Projections")
+bot_page      = st.Page("views/05_teams_bot.py",         title="TEAMS Chatbot")
 
 pg = st.navigation({
     "TEAMS": [home_page, national_page, state_page, finance_page, mortality_page, growth_page, bot_page]
