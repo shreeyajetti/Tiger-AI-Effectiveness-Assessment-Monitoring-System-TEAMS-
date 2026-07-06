@@ -383,9 +383,12 @@ with tab_bar:
 
 # ── Tab 3: National trend ──
 with tab_trend:
-    st.markdown(section_header("National Population Trend (1973–2022)",
-        "Pre-2006: Pug-Mark Methodology (Overcount). Post-2006: Camera-Trap (Reliable)."),
+    st.markdown(section_header("National Population Trend (1973–2030)",
+        "Pre-2006: Pug-Mark Methodology (Overcount). Post-2006: Camera-Trap (Reliable) & Projections."),
         unsafe_allow_html=True)
+
+    hist_mask = national_trend["year"] <= 2022
+    proj_mask = national_trend["year"] >= 2022
 
     fig_trend = go.Figure()
     fig_trend.add_trace(go.Scatter(
@@ -393,13 +396,26 @@ with tab_trend:
         mode="none", fill="tozeroy", fillcolor="rgba(245,158,11,0.06)",
         name="", showlegend=False
     ))
+    
+    # 1. Census Counts line (solid)
+    _c_years = {2006, 2010, 2014, 2018, 2022}
     fig_trend.add_trace(go.Scatter(
-        x=national_trend["year"], y=national_trend["population"],
+        x=national_trend[hist_mask]["year"], y=national_trend[hist_mask]["population"],
         mode="lines+markers",
         line=dict(color=ACCENT, width=3, shape="spline"),
         marker=dict(size=10, color=ACCENT, line=dict(width=2.5, color=PRIMARY_DARK)),
         hovertemplate="<b>%{x}</b><br>Population: <b>%{y:,}</b><extra></extra>",
-        name="All-India"
+        name="Census Counts"
+    ))
+    
+    # 2. Projected line (dashed)
+    fig_trend.add_trace(go.Scatter(
+        x=national_trend[proj_mask]["year"], y=national_trend[proj_mask]["population"],
+        mode="lines+markers",
+        line=dict(color=ACCENT, width=3, dash="dash", shape="spline"),
+        marker=dict(size=8, color=ACCENT_LIGHT, line=dict(width=1.5, color=PRIMARY_DARK)),
+        hovertemplate="<b>%{x} (Projected)</b><br>Population: <b>%{y:,}</b><extra></extra>",
+        name="Projections"
     ))
 
     # 2006 methodology break
@@ -413,17 +429,19 @@ with tab_trend:
         ax=50, ay=-30
     )
 
-    # Label each point
+    # Label only census years and pre-2006 points
     for _, row in national_trend.iterrows():
-        fig_trend.add_annotation(
-            x=row["year"], y=row["population"],
-            text=f"{int(row['population']):,}",
-            showarrow=False, yshift=18,
-            font=dict(size=9, color=MUTED_TEXT)
-        )
+        yr = row["year"]
+        if yr < 2006 or yr in _c_years or yr == 2030:
+            fig_trend.add_annotation(
+                x=yr, y=row["population"],
+                text=f"{int(row['population']):,}",
+                showarrow=False, yshift=18,
+                font=dict(size=9, color=MUTED_TEXT)
+            )
 
-    apply_dark_layout(fig_trend, height=430, showlegend=False,
-                      xaxis_title="Census Year", yaxis_title="Tiger Population (All-India)")
+    apply_dark_layout(fig_trend, height=430, showlegend=True,
+                      xaxis_title="Year", yaxis_title="Tiger Population (All-India)")
     fig_trend.update_xaxes(dtick=5)
     popout_link(fig_trend, "national_trend_popout", "Pop out chart")
     st.plotly_chart(fig_trend, use_container_width=True)

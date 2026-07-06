@@ -32,8 +32,8 @@ total_2006   = int(agg_df[agg_df["year"] == 2006]["tiger_count"].values[0])
 growth_pct   = round(((total_2022 - total_2006) / max(total_2006, 1)) * 100, 1)
 total_funds  = agg_df["total_funding"].sum()
 total_human  = int(hdeaths["deaths_imputed"].sum())
-# Excel has tiger deaths from 2011 to 2025. Filter for 2012-2024 to match the caption "Recorded Deaths (2012-2024)"
-total_tiger  = int(agg_df[(agg_df["year"] >= 2012) & (agg_df["year"] <= 2024)]["tiger_deaths"].sum())
+# Excel has tiger deaths from 2011 to 2025. Filter for 2012-2025 to match the caption "Recorded Deaths (2012-2025)"
+total_tiger  = int(agg_df[(agg_df["year"] >= 2012) & (agg_df["year"] <= 2025)]["tiger_deaths"].sum())
 states_count = census["state"].nunique()
 top_state    = summary.sort_values("pop_2022", ascending=False).iloc[0]["state"]
 most_deaths  = summary.sort_values("human_deaths_total", ascending=False).iloc[0]["state"]
@@ -134,14 +134,18 @@ with c3:
         "Tiger Attacks (2015–2024)", ALERT), unsafe_allow_html=True)
 with c4:
     st.markdown(stat_card("Tiger Mortalities", f"{total_tiger:,}",
-        "Recorded Deaths (2012–2024)", "#F97316"), unsafe_allow_html=True)
+        "Recorded Deaths (2012–2025)", "#F97316"), unsafe_allow_html=True)
 
 st.markdown(f'<div style="height:20px;"></div>', unsafe_allow_html=True)
 
 # ── National population trend chart ──
-st.markdown(section_header("National Tiger Population Trend",
-    "Combined All-India Estimate from NTCA Reports (1973–2022). Note: Methodology Shifted to Camera-Trap in 2006."),
+st.markdown(section_header("National Tiger Population Trend & Projections",
+    "Combined All-India Census Estimates (1973–2022) and Projections (2023–2030)."),
     unsafe_allow_html=True)
+
+# Split into historical/census and projected
+hist_mask = national["year"] <= 2022
+proj_mask = national["year"] >= 2022
 
 fig = go.Figure()
 fig.add_trace(go.Scatter(
@@ -149,24 +153,44 @@ fig.add_trace(go.Scatter(
     mode="none", fill="tozeroy",
     fillcolor="rgba(245,158,11,0.07)", name="", showlegend=False
 ))
+
+# 1. Historical & Census line (solid)
+_c_years = {2006, 2010, 2014, 2018, 2022}
 fig.add_trace(go.Scatter(
-    x=national["year"], y=national["population"],
+    x=national[hist_mask]["year"], y=national[hist_mask]["population"],
     mode="lines+markers+text",
-    name="All-India Tigers",
+    name="Census Counts",
     line=dict(color=ACCENT, width=3, shape="spline"),
     marker=dict(size=10, color=ACCENT, line=dict(width=2.5, color=PRIMARY_DARK), symbol="circle"),
-    text=[f"{int(v):,}" for v in national["population"]],
+    text=[f"{int(row['population']):,}" if (row['year'] in _c_years or row['year'] < 2006) else "" for _, row in national[hist_mask].iterrows()],
     textposition="top center",
     textfont=dict(size=9, color=MUTED_TEXT),
     hovertemplate="<b>%{x}</b><br>Population: <b>%{y:,}</b><extra></extra>",
 ))
+
+# 2. Projected line (dashed)
+fig.add_trace(go.Scatter(
+    x=national[proj_mask]["year"], y=national[proj_mask]["population"],
+    mode="lines+markers",
+    name="Projections",
+    line=dict(color=ACCENT, width=3, dash="dash", shape="spline"),
+    marker=dict(size=8, color=ACCENT_LIGHT, line=dict(width=1.5, color=PRIMARY_DARK)),
+    hovertemplate="<b>%{x} (Projected)</b><br>Population: <b>%{y:,}</b><extra></extra>",
+))
+
 fig.add_vrect(x0=2005.5, x1=2006.5,
     fillcolor=ALERT, opacity=0.08, line_width=0,
-    annotation_text="Camera-trap era begins", annotation_position="top left",
+    annotation_text="Camera-trap era", annotation_position="top left",
     annotation_font_size=10, annotation_font_color=ALERT)
 
-apply_dark_layout(fig, height=380, showlegend=False,
-                  xaxis_title="Census Year", yaxis_title="Tiger Population")
+# Shaded projection area
+fig.add_vrect(x0=2022, x1=2030,
+    fillcolor=SUCCESS, opacity=0.04, line_width=0,
+    annotation_text="Projected Horizon", annotation_position="top left",
+    annotation_font_size=10, annotation_font_color=SUCCESS)
+
+apply_dark_layout(fig, height=380, showlegend=True,
+                  xaxis_title="Year", yaxis_title="Tiger Population")
 fig.update_xaxes(dtick=5, tickmode="linear")
 fig.update_yaxes(rangemode="tozero")
 popout_link(fig, "home_national_trend_popout", "Pop out chart")

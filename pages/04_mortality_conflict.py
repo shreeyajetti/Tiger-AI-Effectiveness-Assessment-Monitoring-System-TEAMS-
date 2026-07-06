@@ -26,8 +26,8 @@ with st.spinner("Loading mortality data..."):
     agg_df = load_funding_geographical_area_year()
 
 # ── Derived stats ──
-# Excel has tiger deaths from 2011 to 2025. Filter for 2012-2024 to match the caption "Recorded Deaths (2012-2024)"
-total_tiger  = int(agg_df[(agg_df["year"] >= 2012) & (agg_df["year"] <= 2024)]["tiger_deaths"].sum())
+# Excel has tiger deaths from 2011 to 2025. Filter for 2012-2025 to match the caption "Recorded Deaths (2012-2025)"
+total_tiger  = int(agg_df[(agg_df["year"] >= 2012) & (agg_df["year"] <= 2025)]["tiger_deaths"].sum())
 total_human  = int(hdeaths["deaths_imputed"].sum())
 total_poach  = int(tdeaths["deaths_poaching"].sum())
 total_nat    = int(tdeaths["deaths_natural_other"].sum())
@@ -48,7 +48,7 @@ st.markdown(page_header(
 c1, c2, c3, c4, c5 = st.columns(5)
 with c1:
     st.markdown(stat_card("Total Tiger Deaths", f"{total_tiger:,}",
-        "All Recorded (2012–2024)", "#F97316"), unsafe_allow_html=True)
+        "All Recorded (2012–2025)", "#F97316"), unsafe_allow_html=True)
 with c2:
     st.markdown(stat_card("Poaching Deaths", f"{total_poach:,}",
         f"{round(total_poach/max(total_tiger,1)*100)}% of Total", ALERT), unsafe_allow_html=True)

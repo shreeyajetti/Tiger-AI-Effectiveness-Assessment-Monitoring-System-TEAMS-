@@ -212,19 +212,68 @@ def load_predictions():
 
 
 def get_national_trend_df():
-    """Return the national tiger population trend (1973-2022) as a DataFrame, using Excel for 2006 onwards."""
+    """Return the national tiger population trend (1973-2030) as a DataFrame, using official census, PCHIP interpolation, and projections."""
+    # Pre-2006 historical points
     hist = {
         1973: 1827, 1979: 3015, 1984: 4005, 1989: 4334,
         1993: 3750, 1997: 3508, 2002: 3642
     }
-    df_hist = pd.DataFrame(list(hist.items()), columns=["year", "population"])
+    
+    # Official census anchors 2006-2022
+    census_anchors = {
+        2006: 1411,
+        2010: 1706,
+        2014: 2226,
+        2018: 2967,
+        2022: 3682
+    }
+    
+    # Post-2022 projections (from sum of states in projection matrix)
+    proj_totals = {}
     try:
-        df_xl = load_funding_geographical_area_year()
-        df_xl_filtered = df_xl[df_xl["tiger_count"].notna()][["year", "tiger_count"]].rename(columns={"tiger_count": "population"})
-        df_xl_filtered["population"] = df_xl_filtered["population"].astype(int)
-        df = pd.concat([df_hist, df_xl_filtered], ignore_index=True)
+        proj_path = os.path.join(DATA_DIR, "tiger_population_matrix_2030_projection.csv")
+        proj = pd.read_csv(proj_path)
+        proj["year"] = proj["year"].astype(int)
+        for _, row in proj.iterrows():
+            yr = int(row["year"])
+            if yr >= 2022:
+                state_cols = [c for c in proj.columns if c != "year"]
+                proj_totals[yr] = int(round(row[state_cols].sum()))
     except Exception:
-        df = pd.DataFrame(list(NATIONAL_TREND.items()), columns=["year", "population"])
+        # Fallback if file not readable
+        proj_totals = {
+            2022: 3682, 2023: 3858, 2024: 4029, 2025: 4204, 
+            2026: 4380, 2027: 4555, 2028: 4731, 2029: 4904, 2030: 5076
+        }
+        
+    # Generate PCHIP interpolation for 2006-2022
+    import numpy as np
+    from scipy.interpolate import pchip_interpolate
+    
+    years_anchors = sorted(census_anchors.keys())
+    pops_anchors = [census_anchors[y] for y in years_anchors]
+    
+    interp_years = list(range(2006, 2023))
+    interp_pops = pchip_interpolate(years_anchors, pops_anchors, interp_years)
+    interp_dict = {y: int(round(p)) for y, p in zip(interp_years, interp_pops)}
+    
+    # Merge all periods
+    all_pops = {}
+    
+    # 1. Historical
+    for y, p in hist.items():
+        all_pops[y] = p
+        
+    # 2. 2006-2022 (PCHIP interpolated/census)
+    for y, p in interp_dict.items():
+        all_pops[y] = p
+        
+    # 3. 2023-2030 (Projected)
+    for y, p in proj_totals.items():
+        if y > 2022:
+            all_pops[y] = p
+            
+    df = pd.DataFrame(list(all_pops.items()), columns=["year", "population"])
     return df.sort_values("year").reset_index(drop=True)
 
 

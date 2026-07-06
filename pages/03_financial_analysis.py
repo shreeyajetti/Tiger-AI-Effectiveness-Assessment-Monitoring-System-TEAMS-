@@ -231,10 +231,10 @@ with tab_trend:
         mode="lines+markers+text",
         name="Total Funding (Official)", line=dict(color=ACCENT, width=3, shape="spline"),
         marker=dict(size=9, color=ACCENT, line=dict(width=2, color=PRIMARY_DARK)),
-        text=[f"₹{int(v):,}" if pd.notna(v) else "" for v in agg_df_sorted["total_funding"]],
+        text=[f"\u20b9{int(v):,}" if (pd.notna(v) and i % 3 == 0) else "" for i, v in enumerate(agg_df_sorted["total_funding"])],
         textposition="top center", textfont=dict(size=9, color=MUTED_TEXT),
         fill="tozeroy", fillcolor="rgba(245,158,11,0.05)",
-        hovertemplate="<b>%{x}</b><br>Total: ₹%{y:,.0f} L<extra></extra>"
+        hovertemplate="<b>%{x}</b><br>Total: \u20b9%{y:,.0f} L<extra></extra>"
     ))
     fig_t.add_trace(go.Scatter(
         x=annual_csv["year"], y=annual_csv["central"].fillna(0),
