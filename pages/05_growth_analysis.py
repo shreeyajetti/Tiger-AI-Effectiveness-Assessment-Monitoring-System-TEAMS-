@@ -267,7 +267,7 @@ if not density_df.empty and not proj_df.empty:
             "state": True,
             "population": True,
             "density_per_100km2": ":.2f",
-            "Forest Category": True,
+            "Forest Category": False,
             "Concentration Status": True,
             "bubble_size": False,
             "latitude": False,
